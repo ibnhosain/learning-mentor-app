@@ -131,7 +131,8 @@ MAX_DAILY_SUBMISSIONS = int(os.environ.get('MAX_DAILY_SUBMISSIONS', '10'))
 
 # Production security
 if not DEBUG:
-    SECURE_SSL_REDIRECT = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = False  # Render handles SSL at proxy level
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_HSTS_SECONDS = 31536000
