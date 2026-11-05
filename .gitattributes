@@ -1,0 +1,4 @@
+# Linux-এ deploy করার সময় shell script-এ LF line ending থাকা জরুরি
+*.sh text eol=lf
+Procfile text eol=lf
+*.py text eol=lf

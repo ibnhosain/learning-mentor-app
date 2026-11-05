@@ -1,0 +1,744 @@
+"""
+Seed command — Stage 0 ও Stage 1 (HTML)-এর পাঠ database-এ ঢোকায়।
+Idempotent: data থাকলে skip করে।
+
+চালানোর পদ্ধতি:
+  python manage.py seed_curriculum
+  python manage.py seed_curriculum --clear   (সব মুছে নতুন করে)
+"""
+from django.core.management.base import BaseCommand
+from curriculum.models import Stage, Module, Lesson
+
+# ════════════════════════════════════════════════════════
+# LESSON CONTENT — Markdown, Bengali + English mixed
+# ════════════════════════════════════════════════════════
+
+DAY01_CONTENT = """## 🎯 আজকের লক্ষ্য (Learning Objective)
+
+আজ তুমি শিখবে:
+- কম্পিউটারে একটি web project folder কীভাবে তৈরি করতে হয়
+- VS Code-এ folder কীভাবে খুলতে হয়
+- প্রথম HTML ফাইল তৈরি ও browser-এ দেখতে হয়
+
+**কেন শিখব?** প্রতিটি web project একটি folder থেকে শুরু হয়। আজ তুমি যে folder তৈরি করবে, সেটিই তোমার "developer-portfolio" — তোমার প্রথম real project!
+
+---
+
+## 📖 Concept
+
+**HTML কী?**
+
+HTML-এর পূর্ণরূপ **HyperText Markup Language**। এটি কোনো programming language নয় — এটি একটি **markup language**।
+
+তুমি যখন কোনো ওয়েবসাইট দেখো, সেই পাতার "কাঠামো" বা structure তৈরি হয় HTML দিয়ে।
+
+মনে করো একটি বাড়ি বানাচ্ছো:
+- **HTML** = বাড়ির কাঠামো (দেয়াল, ছাদ, দরজা)
+- **CSS** = রঙ, সজ্জা, ডিজাইন (পরে শিখব)
+- **JavaScript** = বাড়ির কার্যকারিতা যেমন আলো জ্বালা, দরজা খোলা (পরে শিখব)
+
+---
+
+## 🌍 Real-world Example
+
+তুমি এখন যে browser-এ ওয়েবসাইট দেখছো, সেটি HTML ফাইল পড়ে সুন্দর করে দেখাচ্ছে। Facebook, YouTube, Wikipedia — সবকিছুর ভিত্তিতে HTML আছে।
+
+Browser-এ যেকোনো পাতায় **Right Click → "View Page Source"** চাপলে সেই পাতার HTML কোড দেখতে পাবে।
+
+---
+
+## 💻 Code Demonstration
+
+প্রথম HTML ফাইল এরকম দেখতে:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Portfolio</title>
+</head>
+
+<body>
+    <h1>Welcome to My Portfolio</h1>
+    <p>I am learning Web Development.</p>
+</body>
+
+</html>
+```
+
+**প্রতিটি অংশ কী করে:**
+| Tag | কাজ |
+|-----|-----|
+| `<!DOCTYPE html>` | Browser-কে বলে "এটি HTML5 ফাইল" |
+| `<html>` | পুরো পাতার শুরু ও শেষ |
+| `<head>` | পাতার তথ্য (screen-এ দেখায় না) |
+| `<title>` | Browser-এর tab-এ যা দেখায় |
+| `<body>` | যা screen-এ দেখায় |
+| `<h1>` | সবচেয়ে বড় Heading |
+| `<p>` | Paragraph |
+
+---
+
+## 🤝 Guided Practice
+
+**ধাপে ধাপে করো:**
+
+1. Desktop-এ বা যেকোনো সুবিধাজনক জায়গায় নতুন folder তৈরি করো, নাম দাও: `developer-portfolio`
+2. VS Code খোলো
+3. File → Open Folder → `developer-portfolio` folder select করো
+4. VS Code-এর বাম Explorer panel-এ folder দেখতে পাবে
+5. New File বোতামে click করো, নাম দাও: `index.html`
+6. উপরের Code Demonstration-এর code **নিজে টাইপ করো** (copy করো না!)
+7. Ctrl+S দিয়ে save করো
+8. `index.html` ফাইলটি browser-এ drag করো অথবা VS Code-এ Live Server extension থাকলে সেটি ব্যবহার করো
+
+---
+
+## 🏆 Independent Challenge
+
+এখন **নিজে থেকে** করো (hint ছাড়া):
+
+1. `<h1>` tag-এর ভেতরের লেখা পরিবর্তন করো — তোমার নিজের **নাম** লেখো
+2. `<p>` tag-এ তোমার নিজের **পরিচয়** লেখো
+3. নতুন একটি `<p>` tag যোগ করো — কেন web developer হতে চাও তা লেখো
+4. আরেকটি `<p>` tag যোগ করো — তোমার learning goal লেখো
+5. Save করো এবং browser-এ refresh করো
+
+**সফলতার চিহ্ন:** Browser-এ তোমার নাম ও পরিচয় দেখা যাচ্ছে।
+
+---
+
+## ✅ Day 01 Checklist
+
+- [ ] `developer-portfolio` folder তৈরি হয়েছে
+- [ ] VS Code-এ folder open হয়েছে
+- [ ] `index.html` ফাইল তৈরি হয়েছে
+- [ ] HTML code নিজে টাইপ করেছো (copy নয়)
+- [ ] Browser-এ page দেখা যাচ্ছে
+- [ ] নিজের নাম ও পরিচয় যোগ করেছো
+- [ ] Learning goal লিখেছো
+
+---
+
+## 📝 জমা দেওয়ার নির্দেশ
+
+তোমার `index.html`-এর **সম্পূর্ণ code** এই পাতায় paste করো এবং নিচের প্রশ্নগুলোর উত্তর দাও:
+
+1. `<!DOCTYPE html>` কেন লিখতে হয়?
+2. `<head>` ও `<body>`-এর মধ্যে পার্থক্য কী?
+3. তুমি কোন অংশটি বুঝতে পারোনি বা কঠিন মনে হয়েছে?
+
+> ⚠️ **সতর্কতা:** জমা দেওয়ার সময় কোনো password, API key বা ব্যক্তিগত তথ্য লিখবে না।
+"""
+
+DAY02_CONTENT = """## 🎯 আজকের লক্ষ্য
+
+আজ তুমি শিখবে:
+- HTML document structure-এর প্রতিটি অংশ গভীরভাবে বুঝতে
+- `<head>`-এর ভেতরে কী থাকে ও কেন লাগে
+- Attribute কী এবং কীভাবে ব্যবহার করতে হয়
+
+**কেন গুরুত্বপূর্ণ?** এই ভিত্তিগত জ্ঞান না থাকলে পরবর্তী সব বিষয় কঠিন হয়ে যাবে।
+
+---
+
+## 📖 Concept
+
+### HTML Element vs Tag
+
+**Tag** হলো `<html>` বা `</html>` — angle bracket দিয়ে ঘেরা।
+
+**Element** হলো opening tag + content + closing tag মিলে:
+```
+<p>এটি একটি paragraph।</p>
+```
+- `<p>` = opening tag
+- `এটি একটি paragraph।` = content
+- `</p>` = closing tag
+
+### Self-closing Tags
+
+কিছু tag-এর closing tag নেই:
+```html
+<meta charset="UTF-8">
+<br>
+<img src="photo.jpg" alt="ছবি">
+```
+
+### Attribute
+
+Tag-এর ভেতরে **attribute** দিয়ে অতিরিক্ত তথ্য দেওয়া হয়:
+```html
+<html lang="bn">
+       ^^^  ^^^^
+       name  value
+```
+
+---
+
+## 🌍 Real-world Example
+
+`<meta charset="UTF-8">` না থাকলে বাংলা, আরবি বা চীনা অক্ষর ভুল দেখাবে। আর `<meta name="viewport">` না থাকলে মোবাইলে ওয়েবসাইট ছোট হয়ে দেখাবে।
+
+---
+
+## 💻 Code Demonstration
+
+```html
+<!DOCTYPE html>
+<html lang="bn">
+
+<head>
+    <!-- Character encoding — বাংলাসহ সব ভাষার জন্য জরুরি -->
+    <meta charset="UTF-8">
+
+    <!-- Mobile-এ সঠিক size-এ দেখানোর জন্য -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Search engine-এ যা দেখায় -->
+    <meta name="description" content="Faridur-এর portfolio — Web Developer">
+
+    <!-- Browser tab-এ title -->
+    <title>Faridur | Web Developer</title>
+</head>
+
+<body>
+    <h1>আমার Portfolio</h1>
+    <p>আমি Web Development শিখছি।</p>
+</body>
+
+</html>
+```
+
+**Comment কী?**
+`<!-- এটি একটি comment -->` — browser এটি দেখায় না, শুধু code পড়ার সময় বোঝার জন্য লেখা হয়।
+
+---
+
+## 🤝 Guided Practice
+
+তোমার Day 01-এর `index.html` খোলো এবং:
+
+1. `<html lang="en">` পরিবর্তন করে `<html lang="bn">` করো (কারণ তোমার content বাংলায়)
+2. `<meta name="description">` যোগ করো তোমার নিজের বর্ণনা দিয়ে
+3. `<title>` পরিবর্তন করো তোমার নামে
+4. `<body>`-এর ভেতরে দুটি comment যোগ করো বাংলায়
+
+---
+
+## 🏆 Independent Challenge
+
+একটি নতুন ফাইল তৈরি করো `about.html` নামে। সেখানে:
+- Proper HTML structure থাকবে (DOCTYPE, html, head, body)
+- `<title>` হবে "আমার সম্পর্কে"
+- `<body>`-তে তোমার পরিচয়, শখ ও লক্ষ্য থাকবে
+- অন্তত দুটি comment থাকবে
+
+---
+
+## 📝 জমা দেওয়ার নির্দেশ
+
+`index.html` ও `about.html` দুটির code জমা দাও এবং ব্যাখ্যা করো:
+1. `lang="bn"` কেন দিয়েছো?
+2. `viewport` meta tag না থাকলে কী সমস্যা হতো?
+3. Comment কোন কাজে লাগে?
+"""
+
+DAY03_CONTENT = """## 🎯 আজকের লক্ষ্য
+
+আজ তুমি শিখবে:
+- Heading (h1–h6) এবং কখন কোনটি ব্যবহার করবে
+- Paragraph এবং line break
+- Text formatting: bold, italic, underline
+- HTML entities (বিশেষ চিহ্ন)
+
+---
+
+## 📖 Concept
+
+### Headings: h1 থেকে h6
+
+```html
+<h1>সবচেয়ে বড় — শুধু একটি page-এ একবার</h1>
+<h2>দ্বিতীয় স্তর — section heading</h2>
+<h3>তৃতীয় স্তর — subsection</h3>
+<h4>চতুর্থ স্তর</h4>
+<h5>পঞ্চম স্তর</h5>
+<h6>সবচেয়ে ছোট</h6>
+```
+
+**গুরুত্বপূর্ণ নিয়ম:** একটি পাতায় শুধু **একটি** `<h1>` থাকবে। এটি SEO ও accessibility-র জন্য জরুরি।
+
+### Paragraph ও Line Break
+
+```html
+<p>এটি একটি paragraph। Browser এটিকে আলাদা block হিসেবে দেখায়।</p>
+
+<p>এটি দ্বিতীয় paragraph।<br>এই line-এ br দিয়ে শুধু line break করা হয়েছে।</p>
+```
+
+### Text Formatting
+
+```html
+<strong>এটি গুরুত্বপূর্ণ — bold দেখায়</strong>
+<em>এটি জোর দিয়ে বলা — italic দেখায়</em>
+<mark>এটি highlight করা</mark>
+<del>এটি মুছে ফেলা হয়েছে</del>
+<small>এটি ছোট text</small>
+```
+
+---
+
+## 🌍 Real-world Example
+
+Wikipedia-র প্রতিটি article-এ `<h1>` হলো article-এর নাম, `<h2>` হলো প্রধান section, `<h3>` হলো subsection। এই hierarchy না থাকলে screen reader ব্যবহারকারীরা navigate করতে পারতেন না।
+
+---
+
+## 💻 Code Demonstration
+
+```html
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>আমার Portfolio</title>
+</head>
+<body>
+    <h1>Faridur Rahman</h1>
+
+    <h2>আমার সম্পর্কে</h2>
+    <p>আমি একজন <strong>Web Development</strong> শিক্ষার্থী।
+    আমার লক্ষ্য একজন <em>Full-Stack Developer</em> হওয়া।</p>
+
+    <h2>আমার লক্ষ্য</h2>
+    <p>এই বছর আমি HTML, CSS ও JavaScript শিখব।</p>
+
+    <h3>স্বল্পমেয়াদী লক্ষ্য</h3>
+    <p>প্রথম ৩ মাসে <mark>HTML ও CSS</mark> শেষ করব।</p>
+
+    <h3>দীর্ঘমেয়াদী লক্ষ্য</h3>
+    <p>একটি সম্পূর্ণ <strong>Full-Stack Web Application</strong> তৈরি করব।</p>
+</body>
+</html>
+```
+
+---
+
+## 🤝 Guided Practice
+
+তোমার `index.html` update করো:
+1. শুধু একটি `<h1>` রাখো (তোমার নাম)
+2. "আমার সম্পর্কে" section-এ `<h2>` দাও
+3. "আমার লক্ষ্য" section-এ `<h2>` দাও
+4. গুরুত্বপূর্ণ শব্দে `<strong>` ব্যবহার করো
+5. একটি জায়গায় `<em>` ব্যবহার করো
+
+---
+
+## 🏆 Independent Challenge
+
+**নিজে থেকে করো:**
+
+একটি "My Story" section যোগ করো যেখানে:
+- `<h2>` heading থাকবে
+- অন্তত ২টি `<p>` থাকবে
+- একটি `<strong>` ও একটি `<em>` থাকবে
+- একটি `<br>` ব্যবহার করো সঠিক জায়গায়
+
+**চিন্তা করো:** `<br>` কোথায় ব্যবহার করা উচিত? কবিতায়? ঠিকানায়?
+
+---
+
+## 📝 জমা দেওয়ার নির্দেশ
+
+তোমার আপডেট করা `index.html` জমা দাও এবং ব্যাখ্যা করো:
+1. কেন একটি page-এ একটিই `<h1>` রাখতে হয়?
+2. `<strong>` ও `<b>` কি এক? পার্থক্য কী?
+3. `<br>` কোন ক্ষেত্রে ব্যবহার করা উচিত নয়?
+"""
+
+DAY04_CONTENT = """## 🎯 আজকের লক্ষ্য
+
+আজ তুমি শিখবে:
+- Anchor tag দিয়ে link তৈরি করা
+- Relative ও absolute URL-এর পার্থক্য
+- এক page থেকে অন্য page-এ যাওয়া
+- Internal page navigation (anchor link)
+
+---
+
+## 📖 Concept
+
+### Anchor Tag — Link তৈরির উপায়
+
+```html
+<a href="URL">Link-এর text</a>
+```
+
+**href** মানে Hypertext Reference — এখানে destination লেখা হয়।
+
+### Absolute URL vs Relative URL
+
+```html
+<!-- Absolute URL — সম্পূর্ণ web address -->
+<a href="https://www.google.com">Google-এ যাও</a>
+
+<!-- Relative URL — একই folder-এর ফাইল -->
+<a href="about.html">আমার সম্পর্কে</a>
+
+<!-- Relative URL — subfolder-এর ফাইল -->
+<a href="pages/contact.html">যোগাযোগ</a>
+```
+
+### New Tab-এ খোলা
+
+```html
+<a href="https://www.google.com" target="_blank" rel="noopener noreferrer">
+    Google (নতুন tab-এ)
+</a>
+```
+`rel="noopener noreferrer"` — নিরাপত্তার জন্য জরুরি।
+
+### Internal Navigation (Page-এর ভেতরে)
+
+```html
+<!-- Navigation link -->
+<a href="#about">আমার সম্পর্কে</a>
+
+<!-- Target section -->
+<section id="about">
+    <h2>আমার সম্পর্কে</h2>
+    ...
+</section>
+```
+
+---
+
+## 🌍 Real-world Example
+
+Portfolio website-এর navigation bar-এ সব link সাধারণত **internal navigation** — একই page-এর বিভিন্ন section-এ নিয়ে যায়। এটা single-page website-এর মূল কৌশল।
+
+---
+
+## 💻 Code Demonstration
+
+```html
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>আমার Portfolio</title>
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav>
+        <a href="#home">Home</a> |
+        <a href="#about">আমার সম্পর্কে</a> |
+        <a href="#goals">লক্ষ্য</a> |
+        <a href="contact.html">যোগাযোগ</a>
+    </nav>
+
+    <!-- Sections -->
+    <section id="home">
+        <h1>Faridur Rahman</h1>
+        <p>Web Developer হওয়ার পথে...</p>
+    </section>
+
+    <section id="about">
+        <h2>আমার সম্পর্কে</h2>
+        <p>আমি Web Development শিখছি।</p>
+        <a href="https://github.com" target="_blank" rel="noopener noreferrer">
+            আমার GitHub
+        </a>
+    </section>
+
+    <section id="goals">
+        <h2>আমার লক্ষ্য</h2>
+        <p>Full-Stack Developer হওয়া।</p>
+    </section>
+
+</body>
+</html>
+```
+
+---
+
+## 🤝 Guided Practice
+
+1. তোমার `index.html`-এ একটি `<nav>` section যোগ করো উপরে
+2. `#home`, `#about`, `#goals` — এই তিনটি internal link যোগ করো
+3. প্রতিটি section-এ সংশ্লিষ্ট `id` attribute যোগ করো
+4. একটি external link যোগ করো (যেকোনো ওয়েবসাইট) `target="_blank"` সহ
+
+---
+
+## 🏆 Independent Challenge
+
+তোমার `about.html` ফাইলে একটি link যোগ করো যা `index.html`-এ ফিরে যায়।
+তারপর `index.html`-এ একটি link যোগ করো যা `about.html`-এ যায়।
+এভাবে দুটি page-এর মধ্যে navigation তৈরি করো।
+
+---
+
+## 📝 জমা দেওয়ার নির্দেশ
+
+আপডেট করা `index.html` ও `about.html` জমা দাও এবং ব্যাখ্যা করো:
+1. `href="#about"` ও `href="about.html"` — এই দুটির পার্থক্য কী?
+2. External link-এ `target="_blank"` দিলে কী হয়?
+3. `rel="noopener noreferrer"` কেন লাগে?
+"""
+
+DAY05_CONTENT = """## 🎯 আজকের লক্ষ্য
+
+আজ তুমি শিখবে:
+- HTML-এ image যোগ করা
+- `alt` attribute কেন জরুরি
+- Ordered ও unordered list তৈরি করা
+- Nested list (list-এর ভেতরে list)
+
+---
+
+## 📖 Concept
+
+### Image Tag
+
+```html
+<img src="images/photo.jpg" alt="Faridur-এর ছবি" width="300">
+```
+
+| Attribute | কাজ |
+|-----------|-----|
+| `src` | ছবির path বা URL |
+| `alt` | ছবি না দেখালে যা দেখায়; screen reader-এর জন্য |
+| `width` | ছবির প্রস্থ (pixel-এ) |
+
+**`alt` সবসময় দিতে হবে।** কখনো ফাঁকা রাখবে না যদি ছবিটি meaningful হয়।
+
+### Unordered List (বুলেট)
+
+```html
+<ul>
+    <li>HTML</li>
+    <li>CSS</li>
+    <li>JavaScript</li>
+</ul>
+```
+
+### Ordered List (নম্বর সহ)
+
+```html
+<ol>
+    <li>প্রথমে HTML শিখব</li>
+    <li>তারপর CSS</li>
+    <li>তারপর JavaScript</li>
+</ol>
+```
+
+### Nested List
+
+```html
+<ul>
+    <li>Frontend
+        <ul>
+            <li>HTML</li>
+            <li>CSS</li>
+            <li>JavaScript</li>
+        </ul>
+    </li>
+    <li>Backend
+        <ul>
+            <li>Python</li>
+            <li>Django</li>
+        </ul>
+    </li>
+</ul>
+```
+
+---
+
+## 🌍 Real-world Example
+
+Amazon-এর product page-এ feature list হলো `<ul>`, আর recipe page-এ step-by-step instructions হলো `<ol>`। Portfolio-র "Skills" section সাধারণত `<ul>` দিয়ে তৈরি।
+
+---
+
+## 💻 Code Demonstration
+
+```html
+<section id="skills">
+    <h2>আমার Skills</h2>
+    <ul>
+        <li>HTML (শিখছি)</li>
+        <li>CSS (শিখব)</li>
+        <li>JavaScript (শিখব)</li>
+        <li>React (শিখব)</li>
+    </ul>
+</section>
+
+<section id="learning-plan">
+    <h2>শেখার পরিকল্পনা</h2>
+    <ol>
+        <li>HTML শেষ করব</li>
+        <li>CSS শিখব</li>
+        <li>JavaScript শিখব</li>
+        <li>React শিখব</li>
+        <li>Full-Stack project বানাব</li>
+    </ol>
+</section>
+
+<section id="profile">
+    <h2>আমার Profile</h2>
+    <img src="images/profile.jpg" alt="Faridur Rahman-এর ছবি" width="200">
+    <p>আমার ছবি এখানে থাকবে।</p>
+</section>
+```
+
+---
+
+## 🤝 Guided Practice
+
+তোমার portfolio-তে যোগ করো:
+1. একটি "Skills" section — `<ul>` দিয়ে তোমার শেখা ও শিখতে চাওয়া skills
+2. একটি "শেখার পরিকল্পনা" section — `<ol>` দিয়ে ক্রমিকভাবে
+3. একটি `<img>` tag যোগ করো (ছবি না থাকলে placeholder URL ব্যবহার করো: `https://via.placeholder.com/200`)
+
+---
+
+## 🏆 Independent Challenge
+
+**Nested list তৈরি করো:**
+
+Frontend ও Backend দুটি category সহ তোমার শেখার পরিকল্পনার একটি nested list তৈরি করো। প্রতিটি category-র ভেতরে সংশ্লিষ্ট technology-র list থাকবে।
+
+---
+
+## 📝 জমা দেওয়ার নির্দেশ
+
+আপডেট করা `index.html` জমা দাও এবং ব্যাখ্যা করো:
+1. `alt` attribute কখন ফাঁকা রাখা যায়?
+2. `<ul>` বনাম `<ol>` — কোন পরিস্থিতিতে কোনটি ব্যবহার করবে?
+3. `<li>` tag কি `<ul>` বা `<ol>` ছাড়া ব্যবহার করা যায়?
+"""
+
+
+# ════════════════════════════════════════════════════════
+# CURRICULUM DATA STRUCTURE
+# ════════════════════════════════════════════════════════
+
+CURRICULUM = [
+    {
+        "stage": {"number": 0, "title": "Development Environment", "description": "কম্পিউটার সেটআপ, VS Code, Terminal ও প্রথম ওয়েবপেজ।", "order": 0},
+        "modules": [
+            {
+                "number": 1,
+                "title": "Development Environment Setup",
+                "description": "Project folder, VS Code, browser — web development-এর প্রস্তুতি।",
+                "order": 1,
+                "lessons": [
+                    {"day": 1, "title": "প্রথম HTML পাতা", "content": DAY01_CONTENT, "order": 1},
+                ],
+            }
+        ],
+    },
+    {
+        "stage": {"number": 1, "title": "HTML5: Web Structure", "description": "ওয়েবপেজের কাঠামো তৈরির সম্পূর্ণ ভাষা।", "order": 1},
+        "modules": [
+            {
+                "number": 1,
+                "title": "HTML Fundamentals",
+                "description": "HTML document structure, elements, attributes ও text formatting।",
+                "order": 1,
+                "lessons": [
+                    {"day": 2, "title": "HTML Document Structure", "content": DAY02_CONTENT, "order": 1},
+                    {"day": 3, "title": "Headings, Paragraphs ও Text Formatting", "content": DAY03_CONTENT, "order": 2},
+                ],
+            },
+            {
+                "number": 2,
+                "title": "Links, Media ও Lists",
+                "description": "Anchor tag, images ও list তৈরি।",
+                "order": 2,
+                "lessons": [
+                    {"day": 4, "title": "Links ও Navigation", "content": DAY04_CONTENT, "order": 1},
+                    {"day": 5, "title": "Images ও Lists", "content": DAY05_CONTENT, "order": 2},
+                ],
+            },
+        ],
+    },
+]
+
+
+# ════════════════════════════════════════════════════════
+# MANAGEMENT COMMAND
+# ════════════════════════════════════════════════════════
+
+class Command(BaseCommand):
+    help = 'Stage 0 ও Stage 1-এর পাঠ database-এ ঢোকায়।'
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--clear',
+            action='store_true',
+            help='সব ডেটা মুছে নতুন করে seed করো।',
+        )
+
+    def handle(self, *args, **options):
+        if options['clear']:
+            Stage.objects.all().delete()
+            self.stdout.write(self.style.WARNING('পুরোনো ডেটা মুছে ফেলা হয়েছে।'))
+
+        total_lessons = 0
+        for stage_data in CURRICULUM:
+            stage, created = Stage.objects.get_or_create(
+                number=stage_data['stage']['number'],
+                defaults={
+                    'title': stage_data['stage']['title'],
+                    'description': stage_data['stage']['description'],
+                    'order': stage_data['stage']['order'],
+                },
+            )
+            if created:
+                self.stdout.write(f'  ✓ Stage {stage.number}: {stage.title}')
+
+            for mod_data in stage_data['modules']:
+                module, _ = Module.objects.get_or_create(
+                    stage=stage,
+                    number=mod_data['number'],
+                    defaults={
+                        'title': mod_data['title'],
+                        'description': mod_data.get('description', ''),
+                        'order': mod_data['order'],
+                    },
+                )
+
+                for lesson_data in mod_data['lessons']:
+                    lesson, created = Lesson.objects.get_or_create(
+                        day_number=lesson_data['day'],
+                        defaults={
+                            'module': module,
+                            'title': lesson_data['title'],
+                            'content': lesson_data['content'],
+                            'is_seeded': True,
+                            'order': lesson_data['order'],
+                        },
+                    )
+                    if created:
+                        total_lessons += 1
+                        self.stdout.write(f'    → Day {lesson.day_number:02d}: {lesson.title}')
+
+        if total_lessons:
+            self.stdout.write(self.style.SUCCESS(
+                f'\n✅ সফলভাবে {total_lessons}টি পাঠ যোগ হয়েছে।'
+            ))
+        else:
+            self.stdout.write(self.style.WARNING(
+                '\nℹ️  সব পাঠ আগেই ছিল — কিছু পরিবর্তন হয়নি।'
+            ))
+        self.stdout.write('Admin: http://127.0.0.1:8000/admin/')
