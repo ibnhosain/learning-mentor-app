@@ -3,7 +3,7 @@ services:
     name: learning-mentor-api
     runtime: python
     rootDir: backend
-    buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --no-input && python manage.py migrate && python manage.py seed_curriculum"
+    buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --no-input && python manage.py makemigrations curriculum learning users && python manage.py migrate && python manage.py seed_curriculum"
     startCommand: "gunicorn config.wsgi:application"
     plan: free
     envVars:
