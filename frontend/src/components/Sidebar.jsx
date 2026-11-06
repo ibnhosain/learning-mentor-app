@@ -14,14 +14,6 @@ export default function Sidebar() {
   const navigate = useNavigate()
   const { currentLessonId } = useApp()
 
-  function handleNav(item, e) {
-    if (item.to === 'SUBMIT') {
-      e.preventDefault()
-      if (currentLessonId) navigate(`/submit/${currentLessonId}`)
-      else navigate('/')
-    }
-  }
-
   function logout() {
     clearTokens()
     navigate('/login')
@@ -37,20 +29,33 @@ export default function Sidebar() {
         </div>
 
         <nav className="sidebar-nav">
-          {NAV.map(item => (
-            <NavLink
-              key={item.label}
-              to={item.to === 'SUBMIT' ? '#' : item.to}
-              onClick={item.to === 'SUBMIT' ? e => handleNav(item, e) : undefined}
-              end={item.to === '/'}
-              className={({ isActive }) =>
-                'sidebar-link' + (isActive && item.to !== 'SUBMIT' ? ' active' : '')
-              }
-            >
-              <span className="sidebar-icon">{item.icon}</span>
-              <span>{item.label}</span>
-            </NavLink>
-          ))}
+          {NAV.map(item =>
+            item.to === 'SUBMIT' ? (
+              <button
+                key={item.label}
+                type="button"
+                className="sidebar-link"
+                onClick={() => {
+                  if (currentLessonId) navigate(`/submit/${currentLessonId}`)
+                  else navigate('/')
+                }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left' }}
+              >
+                <span className="sidebar-icon">{item.icon}</span>
+                <span>{item.label}</span>
+              </button>
+            ) : (
+              <NavLink
+                key={item.label}
+                to={item.to}
+                end={item.to === '/'}
+                className={({ isActive }) => 'sidebar-link' + (isActive ? ' active' : '')}
+              >
+                <span className="sidebar-icon">{item.icon}</span>
+                <span>{item.label}</span>
+              </NavLink>
+            )
+          )}
         </nav>
 
         <button className="sidebar-link sidebar-logout" onClick={logout}>
@@ -61,20 +66,33 @@ export default function Sidebar() {
 
       {/* ── Mobile bottom nav ── */}
       <nav className="bottom-nav">
-        {NAV.map(item => (
-          <NavLink
-            key={item.label}
-            to={item.to === 'SUBMIT' ? '#' : item.to}
-            onClick={item.to === 'SUBMIT' ? e => handleNav(item, e) : undefined}
-            end={item.to === '/'}
-            className={({ isActive }) =>
-              'bottom-nav-item' + (isActive && item.to !== 'SUBMIT' ? ' active' : '')
-            }
-          >
-            <span style={{ fontSize: '1.3rem' }}>{item.icon}</span>
-            <span className="bottom-nav-label">{item.label}</span>
-          </NavLink>
-        ))}
+        {NAV.map(item =>
+          item.to === 'SUBMIT' ? (
+            <button
+              key={item.label}
+              type="button"
+              className="bottom-nav-item"
+              onClick={() => {
+                if (currentLessonId) navigate(`/submit/${currentLessonId}`)
+                else navigate('/')
+              }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            >
+              <span style={{ fontSize: '1.3rem' }}>{item.icon}</span>
+              <span className="bottom-nav-label">{item.label}</span>
+            </button>
+          ) : (
+            <NavLink
+              key={item.label}
+              to={item.to}
+              end={item.to === '/'}
+              className={({ isActive }) => 'bottom-nav-item' + (isActive ? ' active' : '')}
+            >
+              <span style={{ fontSize: '1.3rem' }}>{item.icon}</span>
+              <span className="bottom-nav-label">{item.label}</span>
+            </NavLink>
+          )
+        )}
       </nav>
     </>
   )
