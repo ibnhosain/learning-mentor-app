@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from '../api/client'
-import Navbar from '../components/Navbar'
+import AppLayout from '../components/AppLayout'
 import WakeUpLoader from '../components/WakeUpLoader'
 
 export default function Progress() {
@@ -18,12 +18,11 @@ export default function Progress() {
   if (loading) return <WakeUpLoader message="অগ্রগতি লোড হচ্ছে" />
 
   if (error) return (
-    <>
-      <Navbar />
-      <div className="app-container" style={{ paddingTop: 24 }}>
+    <AppLayout>
+      <div className="page-content">
         <div className="alert alert-danger">{error}</div>
       </div>
-    </>
+    </AppLayout>
   )
 
   if (!data) return null
@@ -31,11 +30,12 @@ export default function Progress() {
   const { total_lessons, completed, in_progress, needs_revision, not_started, overall_percent } = data
 
   return (
-    <>
-      <Navbar />
-      <div className="app-container" style={{ paddingTop: 20 }}>
-        <p className="page-title">আমার অগ্রগতি</p>
-        <p className="page-subtitle">মোট {total_lessons}টি পাঠের মধ্যে কতটুকু শেষ।</p>
+    <AppLayout>
+      <div className="page-content">
+        <div className="page-header">
+          <h1 className="page-title">📊 আমার অগ্রগতি</h1>
+          <p className="page-subtitle">মোট {total_lessons}টি পাঠের মধ্যে কতটুকু শেষ।</p>
+        </div>
 
         {/* Overall percentage */}
         <div className="card" style={{ textAlign: 'center' }}>
@@ -68,7 +68,7 @@ export default function Progress() {
           {overall_percent === 100 && <p>🏆 সব পাঠ সম্পন্ন! তুমি একজন Web Developer!</p>}
         </div>
       </div>
-    </>
+    </AppLayout>
   )
 }
 

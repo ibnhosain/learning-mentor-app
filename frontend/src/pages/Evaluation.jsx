@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom'
-import Navbar from '../components/Navbar'
+import AppLayout from '../components/AppLayout'
 
 const SCORE_LABELS = {
   concept: 'ধারণা বোঝা (২০%)',
@@ -34,13 +34,12 @@ export default function Evaluation() {
 
   if (!evaluation) {
     return (
-      <>
-        <Navbar />
-        <div className="app-container" style={{ paddingTop: 24 }}>
+      <AppLayout>
+        <div className="page-content">
           <div className="alert alert-danger">মূল্যায়নের তথ্য পাওয়া যায়নি।</div>
-          <button className="btn btn-outline" onClick={() => navigate('/')}>হোমে যাও</button>
+          <button className="btn btn-outline btn-sm" onClick={() => navigate('/')}>হোমে যাও</button>
         </div>
-      </>
+      </AppLayout>
     )
   }
 
@@ -49,10 +48,11 @@ export default function Evaluation() {
   const scoreClass = passed ? 'pass' : total_score >= 50 ? 'partial' : 'fail'
 
   return (
-    <>
-      <Navbar />
-      <div className="app-container" style={{ paddingTop: 20 }}>
-        <p className="page-title">AI মূল্যায়নের ফলাফল</p>
+    <AppLayout>
+      <div className="page-content">
+        <div className="page-header">
+          <h1 className="page-title">🎯 AI মূল্যায়নের ফলাফল</h1>
+        </div>
 
         {/* Total score */}
         <div className={`score-total ${scoreClass}`}>
@@ -124,6 +124,6 @@ export default function Evaluation() {
           </button>
         )}
       </div>
-    </>
+    </AppLayout>
   )
 }

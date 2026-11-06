@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
-import Navbar from '../components/Navbar'
+import AppLayout from '../components/AppLayout'
 import WakeUpLoader from '../components/WakeUpLoader'
 import CodeEditor from '../components/CodeEditor'
 
@@ -56,11 +56,12 @@ export default function SubmitWork() {
   if (loading) return <WakeUpLoader message="AI মূল্যায়ন করছে, একটু অপেক্ষা করো…" />
 
   return (
-    <>
-      <Navbar />
-      <div className="app-container" style={{ paddingTop: 20 }}>
-        <p className="page-title">কাজ জমা দাও</p>
-        <p className="page-subtitle">তোমার code ও ব্যাখ্যা দাও, AI মূল্যায়ন করবে।</p>
+    <AppLayout>
+      <div className="page-content">
+        <div className="page-header">
+          <h1 className="page-title">✍️ কাজ জমা দাও</h1>
+          <p className="page-subtitle">তোমার code ও ব্যাখ্যা দাও, AI মূল্যায়ন করবে।</p>
+        </div>
 
         {/* Privacy warning */}
         <div className="alert alert-warning">
@@ -174,6 +175,6 @@ export default function SubmitWork() {
           ← ফিরে যাও
         </button>
       </div>
-    </>
+    </AppLayout>
   )
 }

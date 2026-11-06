@@ -85,4 +85,7 @@ export const api = {
   },
 
   getProgress: () => request('GET', '/api/progress/'),
+  getLessons: () => request('GET', '/api/lessons/'),
+  getLesson: (id) => request('GET', `/api/lessons/${id}/`),
+  getStages: () => request('GET', '/api/stages/'),
 };
