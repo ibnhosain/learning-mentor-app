@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import Navbar from '../components/Navbar'
 import WakeUpLoader from '../components/WakeUpLoader'
+import CodeEditor from '../components/CodeEditor'
 
 export default function SubmitWork() {
   const { lessonId } = useParams()
@@ -94,16 +95,15 @@ export default function SubmitWork() {
           {tab === 'code' && (
             <>
               <div className="card">
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">তোমার Code</label>
-                  <textarea
-                    className="form-control code-editor"
-                    value={code}
-                    onChange={e => setCode(e.target.value)}
-                    placeholder={'<!DOCTYPE html>\n<html>\n  ...\n</html>'}
-                    spellCheck={false}
-                  />
-                </div>
+                <label className="form-label" style={{ marginBottom: 8, display: 'block' }}>
+                  তোমার Code
+                </label>
+                <CodeEditor
+                  value={code}
+                  onChange={setCode}
+                  lang="html"
+                  height="340px"
+                />
               </div>
 
               {/* Live HTML Preview */}
