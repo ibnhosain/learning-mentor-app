@@ -628,6 +628,559 @@ Frontend ও Backend দুটি category সহ তোমার শেখা�
 """
 
 
+DAY06_CONTENT = """## 🎯 আজকের লক্ষ্য
+
+আজ তুমি শিখবে:
+- HTML Table তৈরি করা
+- Table-এর row, column ও header
+- `colspan` ও `rowspan` দিয়ে cell merge করা
+- কখন Table ব্যবহার করা উচিত (এবং কখন নয়)
+
+---
+
+## 📖 Concept
+
+### Table-এর মূল কাঠামো
+
+```html
+<table>
+    <thead>           <!-- Table header অংশ -->
+        <tr>          <!-- Table row -->
+            <th>নাম</th>    <!-- Table header cell -->
+            <th>বয়স</th>
+        </tr>
+    </thead>
+    <tbody>           <!-- Table body অংশ -->
+        <tr>
+            <td>Faridur</td>  <!-- Table data cell -->
+            <td>২৫</td>
+        </tr>
+    </tbody>
+</table>
+```
+
+### Cell Merge
+
+```html
+<!-- colspan: পাশাপাশি cells মেলানো -->
+<td colspan="2">এটি দুটি column জুড়ে আছে</td>
+
+<!-- rowspan: উপর-নিচের cells মেলানো -->
+<td rowspan="3">এটি তিনটি row জুড়ে আছে</td>
+```
+
+### কখন Table ব্যবহার করবে?
+✅ Tabular data: marks list, schedule, comparison chart
+❌ Page layout-এর জন্য (এটা CSS-এর কাজ)
+
+---
+
+## 🌍 Real-world Example
+
+Class routine, পরীক্ষার ফলাফল, pricing comparison — সব জায়গায় HTML table ব্যবহার হয়।
+
+---
+
+## 💻 Code Demonstration
+
+```html
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <title>আমার Skills Table</title>
+</head>
+<body>
+
+<h2>আমার শেখার অগ্রগতি</h2>
+
+<table border="1">
+    <thead>
+        <tr>
+            <th>বিষয়</th>
+            <th>স্তর</th>
+            <th>অবস্থা</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>HTML</td>
+            <td>Basic</td>
+            <td>শিখছি ✅</td>
+        </tr>
+        <tr>
+            <td>CSS</td>
+            <td>Basic</td>
+            <td>পরে শিখব ⏳</td>
+        </tr>
+        <tr>
+            <td colspan="2">মোট বিষয়</td>
+            <td>২টি</td>
+        </tr>
+    </tbody>
+</table>
+
+</body>
+</html>
+```
+
+---
+
+## 🤝 Guided Practice
+
+তোমার `index.html`-এ একটি "আমার Skills" section যোগ করো যেখানে:
+1. `<table>` দিয়ে তোমার শেখা ও শিখতে চাওয়া skills দেখাবে
+2. Column হবে: বিষয়, স্তর, অবস্থা
+3. `<thead>` ও `<tbody>` আলাদা থাকবে
+
+---
+
+## 🏆 Independent Challenge
+
+**Class Routine তৈরি করো:**
+
+একটি নতুন `schedule.html` ফাইলে সপ্তাহের ৫ দিনের শেখার routine তৈরি করো। প্রতিটি row হবে একটি বিষয় এবং column হবে সোম–শুক্র। যেদিন পড়বে সেখানে ✅ এবং যেদিন পড়বে না সেখানে ⬜ লেখো।
+
+---
+
+## 📝 জমা দেওয়ার নির্দেশ
+
+তোমার `index.html` ও `schedule.html` জমা দাও এবং ব্যাখ্যা করো:
+1. `<th>` ও `<td>`-এর পার্থক্য কী?
+2. `colspan="2"` মানে কী?
+3. Table কি সবসময় layout-এর জন্য ব্যবহার করা যাবে? কেন বা কেন নয়?
+"""
+
+DAY07_CONTENT = """## 🎯 আজকের লক্ষ্য
+
+আজ তুমি শিখবে:
+- HTML Form তৈরি করা
+- বিভিন্ন input type: text, email, password, number, date, checkbox, radio
+- `<select>` dropdown ও `<textarea>`
+- Form submit ও `action`/`method` attribute
+
+---
+
+## 📖 Concept
+
+### Form-এর কাঠামো
+
+```html
+<form action="/submit" method="POST">
+    <!-- Form elements এখানে -->
+    <button type="submit">জমা দাও</button>
+</form>
+```
+
+- `action` — form জমা দিলে কোথায় যাবে
+- `method` — GET (URL-এ data) বা POST (লুকিয়ে data)
+
+### Input Types
+
+```html
+<input type="text"     name="name"     placeholder="তোমার নাম">
+<input type="email"    name="email"    placeholder="ইমেইল">
+<input type="password" name="pass"     placeholder="পাসওয়ার্ড">
+<input type="number"   name="age"      min="1" max="100">
+<input type="date"     name="birthday">
+<input type="checkbox" name="agree"    value="yes"> একমত
+<input type="radio"    name="gender"   value="male">  পুরুষ
+<input type="radio"    name="gender"   value="female"> মহিলা
+```
+
+### Label — সবসময় দিতে হবে
+
+```html
+<label for="email">ইমেইল:</label>
+<input type="email" id="email" name="email">
+```
+`for` ও `id` এক হলে label ক্লিক করলে input focus হয়।
+
+---
+
+## 💻 Code Demonstration
+
+```html
+<form>
+    <div>
+        <label for="name">তোমার নাম:</label><br>
+        <input type="text" id="name" name="name"
+               placeholder="পুরো নাম লেখো" required>
+    </div>
+
+    <div>
+        <label for="email">ইমেইল:</label><br>
+        <input type="email" id="email" name="email" required>
+    </div>
+
+    <div>
+        <label>তুমি কোন বিষয় শিখতে চাও?</label><br>
+        <input type="checkbox" name="topics" value="html"> HTML<br>
+        <input type="checkbox" name="topics" value="css"> CSS<br>
+        <input type="checkbox" name="topics" value="js"> JavaScript
+    </div>
+
+    <div>
+        <label for="level">অভিজ্ঞতার স্তর:</label>
+        <select id="level" name="level">
+            <option value="">বেছে নাও</option>
+            <option value="beginner">একদম নতুন</option>
+            <option value="some">কিছুটা জানি</option>
+            <option value="intermediate">মাঝারি</option>
+        </select>
+    </div>
+
+    <div>
+        <label for="message">তোমার লক্ষ্য:</label><br>
+        <textarea id="message" name="message" rows="4"
+                  placeholder="কেন web developer হতে চাও..."></textarea>
+    </div>
+
+    <button type="submit">জমা দাও</button>
+    <button type="reset">মুছে ফেলো</button>
+</form>
+```
+
+---
+
+## 🤝 Guided Practice
+
+একটি `contact.html` ফাইল তৈরি করো:
+1. নাম, ইমেইল, বিষয় ও বার্তা field থাকবে
+2. প্রতিটি input-এর `label` থাকবে
+3. Submit button থাকবে
+4. `index.html` থেকে link দাও
+
+---
+
+## 🏆 Independent Challenge
+
+তোমার portfolio-র "Contact Me" section-এ একটি form যোগ করো। Form-এ:
+- নাম, ইমেইল (required)
+- বিষয়: `<select>` দিয়ে (Collaboration, Question, Other)
+- বার্তা: `<textarea>`
+- Submit ও Reset button
+
+---
+
+## 📝 জমা দেওয়ার নির্দেশ
+
+তোমার `contact.html` জমা দাও এবং ব্যাখ্যা করো:
+1. `<label for="email">` ও `<input id="email">` কীভাবে connected?
+2. `required` attribute কী করে?
+3. `method="GET"` ও `method="POST"`-এর পার্থক্য কী?
+"""
+
+DAY08_CONTENT = """## 🎯 আজকের লক্ষ্য
+
+আজ তুমি শিখবে:
+- Semantic HTML5 elements: `<header>`, `<nav>`, `<main>`, `<section>`, `<article>`, `<aside>`, `<footer>`
+- Div vs Semantic elements — কোনটি কখন ব্যবহার করবে
+- Semantic HTML কেন important (SEO ও accessibility)
+
+---
+
+## 📖 Concept
+
+### Non-semantic vs Semantic
+
+```html
+<!-- পুরনো উপায় (avoid করো) -->
+<div id="header">...</div>
+<div id="nav">...</div>
+<div id="content">...</div>
+
+<!-- Semantic HTML5 (সঠিক উপায়) -->
+<header>...</header>
+<nav>...</nav>
+<main>...</main>
+```
+
+### প্রধান Semantic Elements
+
+| Element | কোথায় ব্যবহার করবে |
+|---------|-----------------|
+| `<header>` | পাতার বা section-এর শীর্ষে (logo, title) |
+| `<nav>` | Navigation links |
+| `<main>` | পাতার মূল content (শুধু একবার) |
+| `<section>` | থিমের ভিত্তিতে ভাগ করা অংশ |
+| `<article>` | স্বতন্ত্র content (blog post, news) |
+| `<aside>` | পাশের অতিরিক্ত তথ্য (sidebar) |
+| `<footer>` | পাতার নিচে (copyright, links) |
+
+---
+
+## 💻 Code Demonstration
+
+```html
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faridur | Portfolio</title>
+</head>
+<body>
+
+    <header>
+        <h1>Faridur Rahman</h1>
+        <p>Aspiring Full-Stack Developer</p>
+    </header>
+
+    <nav>
+        <a href="#about">আমার সম্পর্কে</a>
+        <a href="#skills">Skills</a>
+        <a href="#contact">যোগাযোগ</a>
+    </nav>
+
+    <main>
+        <section id="about">
+            <h2>আমার সম্পর্কে</h2>
+            <p>আমি web development শিখছি...</p>
+        </section>
+
+        <section id="skills">
+            <h2>আমার Skills</h2>
+            <ul>
+                <li>HTML ✅</li>
+                <li>CSS (শিখছি)</li>
+            </ul>
+        </section>
+
+        <section id="projects">
+            <h2>আমার Projects</h2>
+            <article>
+                <h3>Developer Portfolio</h3>
+                <p>আমার প্রথম HTML project।</p>
+            </article>
+        </section>
+    </main>
+
+    <aside>
+        <h3>Quick Links</h3>
+        <ul>
+            <li><a href="https://github.com">GitHub</a></li>
+        </ul>
+    </aside>
+
+    <footer>
+        <p>&copy; 2024 Faridur Rahman. All rights reserved.</p>
+    </footer>
+
+</body>
+</html>
+```
+
+---
+
+## 🤝 Guided Practice
+
+তোমার `index.html` সম্পূর্ণভাবে Semantic HTML দিয়ে নতুন করে লেখো:
+1. `<div id="header">` → `<header>`
+2. `<div id="nav">` → `<nav>`
+3. Main content `<main>`-এর ভেতরে
+4. প্রতিটি section `<section>` দিয়ে ভাগ করা
+5. `<footer>`-এ copyright
+
+---
+
+## 🏆 Independent Challenge
+
+**Blog Post Page তৈরি করো:**
+
+`blog.html` নামে একটি ফাইল তৈরি করো। সেখানে তোমার "Web Development শেখার অভিজ্ঞতা" বিষয়ে একটি ছোট blog post লেখো। Semantic elements: `<article>`, `<header>`, `<main>`, `<footer>` ব্যবহার করো।
+
+---
+
+## 📝 জমা দেওয়ার নির্দেশ
+
+আপডেট করা `index.html` ও `blog.html` জমা দাও এবং ব্যাখ্যা করো:
+1. `<div>` ও `<section>`-এর পার্থক্য কী?
+2. Semantic HTML SEO-এর জন্য কেন ভালো?
+3. `<article>` কখন ব্যবহার করবে?
+"""
+
+DAY09_CONTENT = """## 🎯 আজকের লক্ষ্য
+
+আজ তুমি শিখবে:
+- HTML5 `<video>` ও `<audio>` element
+- `<iframe>` দিয়ে YouTube video embed করা
+- `<figure>` ও `<figcaption>`
+- Responsive image ও `<picture>` element
+
+---
+
+## 📖 Concept
+
+### Video
+
+```html
+<video width="640" height="360" controls>
+    <source src="video.mp4" type="video/mp4">
+    তোমার browser video support করে না।
+</video>
+```
+
+Attributes: `controls` (play/pause button), `autoplay`, `loop`, `muted`
+
+### Audio
+
+```html
+<audio controls>
+    <source src="audio.mp3" type="audio/mpeg">
+    তোমার browser audio support করে না।
+</audio>
+```
+
+### Iframe — YouTube Embed
+
+```html
+<iframe
+    width="560"
+    height="315"
+    src="https://www.youtube.com/embed/VIDEO_ID"
+    title="Video title"
+    allowfullscreen>
+</iframe>
+```
+
+### Figure ও Figcaption
+
+```html
+<figure>
+    <img src="chart.png" alt="Progress chart">
+    <figcaption>আমার শেখার অগ্রগতির chart</figcaption>
+</figure>
+```
+
+---
+
+## 💻 Code Demonstration
+
+```html
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <title>Media Page</title>
+</head>
+<body>
+
+    <section>
+        <h2>YouTube Tutorial</h2>
+        <iframe
+            width="560" height="315"
+            src="https://www.youtube.com/embed/dQw4w9WgXcQ"
+            title="Tutorial video"
+            allowfullscreen>
+        </iframe>
+    </section>
+
+    <section>
+        <h2>আমার Project Screenshot</h2>
+        <figure>
+            <img src="https://via.placeholder.com/400x300"
+                 alt="Project screenshot"
+                 width="400">
+            <figcaption>আমার প্রথম HTML project</figcaption>
+        </figure>
+    </section>
+
+</body>
+</html>
+```
+
+---
+
+## 🤝 Guided Practice
+
+তোমার portfolio-তে:
+1. একটি YouTube tutorial-এর iframe embed করো (যেকোনো HTML tutorial)
+2. একটি `<figure>` যোগ করো placeholder image ও caption সহ
+3. `index.html` থেকে এই page-এ link দাও
+
+---
+
+## 🏆 Independent Challenge
+
+`media.html` নামে একটি page তৈরি করো:
+- দুটি YouTube video embed করো
+- প্রতিটির নিচে `<figure>` ও `<figcaption>` দিয়ে ব্যাখ্যা দাও
+- Semantic structure ব্যবহার করো
+
+---
+
+## 📝 জমা দেওয়ার নির্দেশ
+
+`media.html` জমা দাও এবং ব্যাখ্যা করো:
+1. `<video>` ও `<iframe>` — video দেখানোর দুটি উপায়। কোনটি কখন ব্যবহার করবে?
+2. `<figure>` ও শুধু `<img>` — পার্থক্য কী?
+3. `allowfullscreen` attribute কী করে?
+"""
+
+DAY10_CONTENT = """## 🎯 আজকের লক্ষ্য
+
+🎉 **Stage 1 Project Day!**
+
+আজ তুমি HTML-এ যা শিখেছো (Day 1–9) সব মিলিয়ে একটি সম্পূর্ণ **Personal Portfolio Website** তৈরি করবে।
+
+---
+
+## 📋 Project Specification
+
+### তোমার Portfolio-তে কী কী থাকবে:
+
+**`index.html` (Home Page)**
+- `<header>`: তোমার নাম ও tagline
+- `<nav>`: Home, About, Skills, Projects, Contact লিঙ্ক
+- `<main>`:
+  - `<section id="about">`: তোমার পরিচয় ও ছবি (`<figure>`)
+  - `<section id="skills">`: দুটো list — শেখা skills ও শিখতে চাওয়া skills
+  - `<section id="projects">`: তোমার project (এখন পর্যন্ত একটিই — এই portfolio!)
+  - `<section id="contact">`: Contact form
+- `<footer>`: Copyright
+
+**`about.html`**
+- তোমার বিস্তারিত পরিচয়
+- তোমার শেখার journey ও লক্ষ্য
+
+**`schedule.html`**
+- সাপ্তাহিক শেখার routine (Table ব্যবহার করো)
+
+---
+
+## ✅ Checklist (প্রতিটি নিশ্চিত করো)
+
+- [ ] Proper `<!DOCTYPE html>`, `<html lang="bn">`, `<head>`, `<body>`
+- [ ] Meaningful `<title>` ও `<meta>` tags
+- [ ] Semantic elements: header, nav, main, section, footer
+- [ ] অন্তত একটি `<table>`
+- [ ] একটি `<form>` (contact form)
+- [ ] Image সহ `<figure>` ও `<figcaption>`
+- [ ] Internal navigation (anchor links)
+- [ ] External link (GitHub/LinkedIn) `target="_blank"` সহ
+- [ ] সব pages-এ navigation link
+
+---
+
+## 💡 Tips
+
+- এটি "perfect" হতে হবে না — এখনো CSS শিখোনি, তাই সুন্দর না দেখালে ঠিক আছে।
+- প্রতিটি HTML element যেন সঠিক জায়গায় ব্যবহার হয়।
+- নিজের আসল তথ্য দাও — এটি তোমার real portfolio!
+
+---
+
+## 📝 জমা দেওয়ার নির্দেশ
+
+তোমার সম্পূর্ণ project **ZIP করে** জমা দাও এবং ব্যাখ্যা করো:
+1. কোন অংশটি সবচেয়ে কঠিন মনে হয়েছে ও কীভাবে সমাধান করেছো?
+2. তুমি কোন HTML element সবচেয়ে বেশি ব্যবহার করেছো ও কেন?
+3. CSS না শিখলে কী কী সীমাবদ্ধতা অনুভব করলে?
+
+> 🎯 **৭৫% বা বেশি পেলে CSS শেখা শুরু হবে!**
+"""
+
 # ════════════════════════════════════════════════════════
 # CURRICULUM DATA STRUCTURE
 # ════════════════════════════════════════════════════════
@@ -668,6 +1221,35 @@ CURRICULUM = [
                 "lessons": [
                     {"day": 4, "title": "Links ও Navigation", "content": DAY04_CONTENT, "order": 1},
                     {"day": 5, "title": "Images ও Lists", "content": DAY05_CONTENT, "order": 2},
+                ],
+            },
+            {
+                "number": 3,
+                "title": "Tables ও Forms",
+                "description": "Data table তৈরি ও user input form।",
+                "order": 3,
+                "lessons": [
+                    {"day": 6, "title": "HTML Tables", "content": DAY06_CONTENT, "order": 1},
+                    {"day": 7, "title": "HTML Forms", "content": DAY07_CONTENT, "order": 2},
+                ],
+            },
+            {
+                "number": 4,
+                "title": "Semantic HTML ও Media",
+                "description": "HTML5 semantic elements, video, audio ও iframe।",
+                "order": 4,
+                "lessons": [
+                    {"day": 8, "title": "Semantic HTML5", "content": DAY08_CONTENT, "order": 1},
+                    {"day": 9, "title": "HTML5 Media (Video, Audio, Iframe)", "content": DAY09_CONTENT, "order": 2},
+                ],
+            },
+            {
+                "number": 5,
+                "title": "Stage 1 Project",
+                "description": "Personal Portfolio — সব HTML জ্ঞান একসাথে।",
+                "order": 5,
+                "lessons": [
+                    {"day": 10, "title": "Personal Portfolio Website (HTML Project)", "content": DAY10_CONTENT, "order": 1},
                 ],
             },
         ],

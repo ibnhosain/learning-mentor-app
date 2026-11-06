@@ -128,7 +128,7 @@ class SubmissionDetailView(APIView):
 
 
 class ProgressView(APIView):
-    """সামগ্রিক অগ্রগতির সারসংক্ষেপ।"""
+    """সামগ্রিক অগ্রগতির সারসংক্ষেপ — দুর্বলতার তালিকাসহ।"""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -140,6 +140,21 @@ class ProgressView(APIView):
             status_map[s] = status_map.get(s, 0) + 1
         status_map['not_started'] += total - LessonProgress.objects.count()
 
+        # দুর্বলতার তালিকা — needs_revision lesson-গুলো
+        weak = LessonProgress.objects.filter(
+            status='needs_revision'
+        ).select_related('lesson').order_by('lesson__day_number')
+        weak_lessons = [
+            {
+                'id': p.lesson.id,
+                'day_number': p.lesson.day_number,
+                'title': p.lesson.title,
+                'best_score': p.best_score,
+                'attempts': p.attempts,
+            }
+            for p in weak
+        ]
+
         data = {
             'total_lessons': total,
             'completed': status_map['completed'],
@@ -147,6 +162,7 @@ class ProgressView(APIView):
             'needs_revision': status_map['needs_revision'],
             'not_started': status_map['not_started'],
             'overall_percent': round(status_map['completed'] / total * 100, 1) if total else 0,
+            'weak_lessons': weak_lessons,
         }
         return Response(data)
 
@@ -245,8 +261,21 @@ def _extract_zip_bytes(file_bytes):
 
 
 class DailyLogGenerateView(APIView):
-    """আজকের daily log তৈরি করো (AI দিয়ে)।"""
+    """আজকের daily log তৈরি করো (AI দিয়ে) ও download করো।"""
     permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """আজকের log download করো (Markdown)।"""
+        from django.http import HttpResponse
+        today = date.today()
+        log = DailyLog.objects.filter(date=today).first()
+        if not log or not log.content:
+            content = f"# Daily Log — {today}\n\nআজকে কোনো পাঠ সম্পন্ন হয়নি।\n"
+        else:
+            content = log.content
+        response = HttpResponse(content, content_type='text/markdown; charset=utf-8')
+        response['Content-Disposition'] = f'attachment; filename="daily-log-{today}.md"'
+        return response
 
     def post(self, request):
         today = date.today()
@@ -254,7 +283,6 @@ class DailyLogGenerateView(APIView):
         if not created and not request.data.get('regenerate'):
             return Response(DailyLogSerializer(log).data)
 
-        # আজকের submissions সংগ্রহ
         today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
         submissions = Submission.objects.filter(
             submitted_at__gte=today_start
