@@ -20,33 +20,45 @@ def _api_key():
     return settings.GEMINI_API_KEY or ''
 
 
+FALLBACK_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash']
+
+
 def _model():
-    return settings.GEMINI_MODEL or 'gemini-2.0-flash'
+    return settings.GEMINI_MODEL or 'gemini-2.5-flash'
 
 
 def _generate(contents, max_retries=3):
-    """Gemini REST API call — JSON contents list পাঠাও, text ফেরত পাও।"""
-    url = f"{GEMINI_BASE}/{_model()}:generateContent?key={_api_key()}"
-    payload = {"contents": contents}
+    """Gemini REST API call — model unavailable হলে fallback করে।"""
+    models_to_try = [_model()] + [m for m in FALLBACK_MODELS if m != _model()]
 
-    for attempt in range(max_retries):
-        try:
-            resp = _requests.post(url, json=payload, timeout=60)
-            if resp.status_code == 429:
-                time.sleep(2 ** attempt)
-                continue
-            if not resp.ok:
-                err = resp.json() if resp.content else {}
-                msg = err.get('error', {}).get('message', resp.text[:200])
-                return None, f"AI error: {msg}"
-            data = resp.json()
-            text = data['candidates'][0]['content']['parts'][0]['text']
-            return text, None
-        except Exception as e:
-            logger.error("Gemini REST error: %s", e)
-            return None, str(e)
+    for model in models_to_try:
+        url = f"{GEMINI_BASE}/{model}:generateContent?key={_api_key()}"
+        payload = {"contents": contents}
 
-    return None, "Rate limit — পরে আবার চেষ্টা করো।"
+        for attempt in range(max_retries):
+            try:
+                resp = _requests.post(url, json=payload, timeout=60)
+                if resp.status_code == 429:
+                    time.sleep(2 ** attempt)
+                    continue
+                if resp.status_code == 404:
+                    # এই model নেই — পরের model চেষ্টা করো
+                    break
+                if not resp.ok:
+                    err = resp.json() if resp.content else {}
+                    msg = err.get('error', {}).get('message', resp.text[:200])
+                    # model deprecated হলে পরেরটা চেষ্টা করো
+                    if 'no longer available' in msg or 'deprecated' in msg.lower():
+                        break
+                    return None, f"AI error: {msg}"
+                data = resp.json()
+                text = data['candidates'][0]['content']['parts'][0]['text']
+                return text, None
+            except Exception as e:
+                logger.error("Gemini REST error: %s", e)
+                return None, str(e)
+
+    return None, "Gemini API কাজ করছে না। Render-এ GEMINI_MODEL ও GEMINI_API_KEY যাচাই করো।"
 
 
 EVALUATION_PROMPT = """তুমি একজন Web Development Mentor। একজন Beginner শিক্ষার্থীর কাজ মূল্যায়ন করো।
