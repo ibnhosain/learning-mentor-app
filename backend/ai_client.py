@@ -1,24 +1,52 @@
 """
 সব Gemini API call এই একটি ফাইলে থাকবে।
-নতুন google-genai SDK ব্যবহার করা হচ্ছে।
+SDK-এর উপর নির্ভর না করে সরাসরি REST API ব্যবহার করা হচ্ছে।
 """
 import io
 import json
 import mimetypes
 import time
 import logging
+import base64
+import requests as _requests
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-try:
-    from google import genai
-    _client = genai.Client(api_key=settings.GEMINI_API_KEY) if settings.GEMINI_API_KEY else None
-    GEMINI_AVAILABLE = bool(settings.GEMINI_API_KEY)
-except Exception as e:
-    logger.warning("Gemini SDK load ব্যর্থ: %s", e)
-    GEMINI_AVAILABLE = False
-    _client = None
+GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
+
+
+def _api_key():
+    return settings.GEMINI_API_KEY or ''
+
+
+def _model():
+    return settings.GEMINI_MODEL or 'gemini-2.0-flash'
+
+
+def _generate(contents, max_retries=3):
+    """Gemini REST API call — JSON contents list পাঠাও, text ফেরত পাও।"""
+    url = f"{GEMINI_BASE}/{_model()}:generateContent?key={_api_key()}"
+    payload = {"contents": contents}
+
+    for attempt in range(max_retries):
+        try:
+            resp = _requests.post(url, json=payload, timeout=60)
+            if resp.status_code == 429:
+                time.sleep(2 ** attempt)
+                continue
+            if not resp.ok:
+                err = resp.json() if resp.content else {}
+                msg = err.get('error', {}).get('message', resp.text[:200])
+                return None, f"AI error: {msg}"
+            data = resp.json()
+            text = data['candidates'][0]['content']['parts'][0]['text']
+            return text, None
+        except Exception as e:
+            logger.error("Gemini REST error: %s", e)
+            return None, str(e)
+
+    return None, "Rate limit — পরে আবার চেষ্টা করো।"
 
 
 EVALUATION_PROMPT = """তুমি একজন Web Development Mentor। একজন Beginner শিক্ষার্থীর কাজ মূল্যায়ন করো।
@@ -36,29 +64,15 @@ EVALUATION_PROMPT = """তুমি একজন Web Development Mentor। এ�
 - ব্যাখ্যা না থাকলে explanation score শূন্য।
 - ৭৫% বা বেশি এবং practical task সম্পন্ন হলে "Completed"।
 
-**Rubric:**
-- concept: ০–২০
-- independent_coding: ০–৩০
-- debugging: ০–২০
-- project_quality: ০–২০
-- explanation: ০–১০
+**Rubric:** concept: ০–২০, independent_coding: ০–৩০, debugging: ০–২০, project_quality: ০–২০, explanation: ০–১০
 
 নিচের JSON format-এ উত্তর দাও (অন্য কোনো text নয়):
-{{
-  "scores": {{"concept": 0, "independent_coding": 0, "debugging": 0, "project_quality": 0, "explanation": 0}},
-  "total": 0,
-  "what_is_correct": ["..."],
-  "what_is_wrong": ["..."],
-  "hints": ["..."],
-  "next_step": "...",
-  "status": "In Progress | Needs Revision | Completed"
-}}"""
+{{"scores": {{"concept": 0, "independent_coding": 0, "debugging": 0, "project_quality": 0, "explanation": 0}}, "total": 0, "what_is_correct": ["..."], "what_is_wrong": ["..."], "hints": ["..."], "next_step": "...", "status": "In Progress | Needs Revision | Completed"}}"""
 
 
 def evaluate_submission(lesson, submission, max_retries=3):
-    """Submission মূল্যায়ন করো। ব্যর্থ হলে None return করো।"""
-    if not GEMINI_AVAILABLE or not _client:
-        logger.warning("Gemini API available নয় — mock mode।")
+    """Text submission মূল্যায়ন করো।"""
+    if not _api_key():
         return _mock_evaluation()
 
     prompt = EVALUATION_PROMPT.format(
@@ -68,35 +82,44 @@ def evaluate_submission(lesson, submission, max_retries=3):
         explanation=submission.explanation[:500] if submission.explanation else "(কোনো ব্যাখ্যা দেওয়া হয়নি)",
     )
 
-    for attempt in range(max_retries):
-        try:
-            response = _client.models.generate_content(
-                model=settings.GEMINI_MODEL,
-                contents=prompt,
-            )
-            raw = response.text.strip()
-            # Markdown code block সরাও
-            if raw.startswith("```"):
-                parts = raw.split("```")
-                raw = parts[1] if len(parts) > 1 else raw
-                if raw.startswith("json"):
-                    raw = raw[4:]
-            data = json.loads(raw.strip())
-            return _normalize_eval(data, raw)
-        except json.JSONDecodeError:
-            logger.error("Gemini JSON parse ব্যর্থ: %s", raw[:200] if 'raw' in dir() else '?')
-            return _error_evaluation("AI-র উত্তর parse করা যায়নি।")
-        except Exception as e:
-            err_str = str(e)
-            if '429' in err_str or 'quota' in err_str.lower():
-                wait = 2 ** attempt
-                logger.warning("Rate limit — %ds অপেক্ষা করছি...", wait)
-                time.sleep(wait)
-            else:
-                logger.error("Gemini error: %s", err_str)
-                return _error_evaluation(f"AI error: {err_str[:120]}")
+    contents = [{"role": "user", "parts": [{"text": prompt}]}]
+    raw, err = _generate(contents, max_retries)
+    if err:
+        return _error_evaluation(err)
+    return _parse_eval(raw)
 
-    return _error_evaluation("Rate limit — পরে আবার চেষ্টা করো।")
+
+def evaluate_any_file(lesson, file_bytes, filename, explanation, max_retries=3):
+    """যেকোনো ফাইল (image/PDF/audio/video) মূল্যায়ন করো — inline base64।"""
+    if not _api_key():
+        return _mock_evaluation()
+
+    mime_type = mimetypes.guess_type(filename)[0] or 'application/octet-stream'
+    b64 = base64.b64encode(file_bytes).decode('utf-8')
+
+    prompt_text = f"""তুমি একজন Web Development Mentor। ফাইলটি দেখে মূল্যায়ন করো।
+
+**পাঠ:** {lesson.title} (Day {lesson.day_number})
+**ফাইল:** {filename}
+**শিক্ষার্থীর ব্যাখ্যা:** {explanation or '(দেওয়া হয়নি)'}
+
+Rubric: concept:০–২০, independent_coding:০–৩০, debugging:০–২০, project_quality:০–২০, explanation:০–১০
+
+JSON format-এ উত্তর দাও:
+{{"scores":{{"concept":0,"independent_coding":0,"debugging":0,"project_quality":0,"explanation":0}},"total":0,"what_is_correct":["..."],"what_is_wrong":["..."],"hints":["..."],"next_step":"...","status":"In Progress | Needs Revision | Completed"}}"""
+
+    contents = [{
+        "role": "user",
+        "parts": [
+            {"inline_data": {"mime_type": mime_type, "data": b64}},
+            {"text": prompt_text},
+        ],
+    }]
+
+    raw, err = _generate(contents, max_retries)
+    if err:
+        return _error_evaluation(err)
+    return _parse_eval(raw)
 
 
 def generate_daily_log(submissions):
@@ -110,26 +133,31 @@ def generate_daily_log(submissions):
         for s in submissions
     )
 
-    if not GEMINI_AVAILABLE or not _client:
-        from datetime import date
-        return f"# Daily Log — {date.today()}\n\n## আজকের কাজ\n{summary}\n"
-
-    prompt = f"""নিচের তথ্য দিয়ে একটি সংক্ষিপ্ত Daily Learning Report তৈরি করো (বাংলায়, Markdown format-এ):
-
-{summary}
-
-Report-এ থাকবে: আজকের বিষয়, কী শিখেছি, দুর্বলতা, পরের পাঠ।"""
-
-    try:
-        response = _client.models.generate_content(
-            model=settings.GEMINI_MODEL,
-            contents=prompt,
-        )
-        return response.text
-    except Exception as e:
-        logger.error("Daily log generate ব্যর্থ: %s", e)
+    if not _api_key():
         from datetime import date
         return f"# Daily Log — {date.today()}\n\n{summary}\n"
+
+    prompt = f"নিচের তথ্য দিয়ে একটি সংক্ষিপ্ত Daily Learning Report তৈরি করো (বাংলায়, Markdown):\n\n{summary}\n\nReport-এ: আজকের বিষয়, কী শিখেছি, দুর্বলতা, পরের পাঠ।"
+    contents = [{"role": "user", "parts": [{"text": prompt}]}]
+    raw, err = _generate(contents)
+    if err:
+        from datetime import date
+        return f"# Daily Log — {date.today()}\n\n{summary}\n"
+    return raw
+
+
+def _parse_eval(raw):
+    try:
+        text = raw.strip()
+        if text.startswith("```"):
+            parts = text.split("```")
+            text = parts[1] if len(parts) > 1 else text
+            if text.startswith("json"):
+                text = text[4:]
+        data = json.loads(text.strip())
+        return _normalize_eval(data, raw)
+    except json.JSONDecodeError:
+        return _error_evaluation("AI-র উত্তর parse করা যায়নি।")
 
 
 def _normalize_eval(data, raw):
@@ -160,84 +188,13 @@ def _error_evaluation(message):
     }
 
 
-def evaluate_any_file(lesson, file_bytes, filename, explanation, max_retries=3):
-    """যেকোনো ফাইল Gemini File API দিয়ে মূল্যায়ন করো।"""
-    if not GEMINI_AVAILABLE or not _client:
-        return _mock_evaluation()
-
-    mime_type = mimetypes.guess_type(filename)[0] or 'application/octet-stream'
-
-    prompt = f"""তুমি একজন Web Development Mentor। একজন Beginner শিক্ষার্থীর জমা দেওয়া ফাইল মূল্যায়ন করো।
-
-**পাঠ:** {lesson.title} (Day {lesson.day_number})
-**ফাইল:** {filename}
-
-**শিক্ষার্থীর ব্যাখ্যা:**
-{explanation or '(কোনো ব্যাখ্যা দেওয়া হয়নি)'}
-
-**মূল্যায়নের নিয়ম:**
-- প্রথমবারে সরাসরি solution দেবে না — hint ও প্রশ্ন দেবে।
-- ব্যাখ্যা না থাকলে explanation score শূন্য।
-- ৭৫% বা বেশি এবং practical task সম্পন্ন হলে "Completed"।
-
-**Rubric:** concept: ০–২০, independent_coding: ০–৩০, debugging: ০–২০, project_quality: ০–২০, explanation: ০–১০
-
-নিচের JSON format-এ উত্তর দাও (অন্য কোনো text নয়):
-{{"scores": {{"concept": 0, "independent_coding": 0, "debugging": 0, "project_quality": 0, "explanation": 0}}, "total": 0, "what_is_correct": ["..."], "what_is_wrong": ["..."], "hints": ["..."], "next_step": "...", "status": "In Progress | Needs Revision | Completed"}}"""
-
-    for attempt in range(max_retries):
-        uploaded = None
-        try:
-            # Gemini File API-তে upload করো
-            uploaded = _client.files.upload(
-                file=io.BytesIO(file_bytes),
-                config={'mime_type': mime_type, 'display_name': filename},
-            )
-            response = _client.models.generate_content(
-                model=settings.GEMINI_MODEL,
-                contents=[uploaded, prompt],
-            )
-            # Uploaded file মুছে দাও (storage বাঁচাতে)
-            try:
-                _client.files.delete(name=uploaded.name)
-            except Exception:
-                pass
-
-            raw = response.text.strip()
-            if raw.startswith("```"):
-                parts = raw.split("```")
-                raw = parts[1] if len(parts) > 1 else raw
-                if raw.startswith("json"):
-                    raw = raw[4:]
-            data = json.loads(raw.strip())
-            return _normalize_eval(data, raw)
-
-        except json.JSONDecodeError:
-            return _error_evaluation("AI-র উত্তর parse করা যায়নি।")
-        except Exception as e:
-            err_str = str(e)
-            if uploaded:
-                try:
-                    _client.files.delete(name=uploaded.name)
-                except Exception:
-                    pass
-            if '429' in err_str or 'quota' in err_str.lower():
-                time.sleep(2 ** attempt)
-            else:
-                logger.error("File eval error: %s", err_str)
-                return _error_evaluation(f"AI error: {err_str[:120]}")
-
-    return _error_evaluation("Rate limit — পরে আবার চেষ্টা করো।")
-
-
 def _mock_evaluation():
-    """Gemini API না থাকলে test-এর জন্য।"""
     return {
         'scores': {'concept': 15, 'independent_coding': 20, 'debugging': 15, 'project_quality': 15, 'explanation': 5},
         'total_score': 70,
         'what_is_correct': ['HTML structure ঠিক আছে।'],
-        'what_is_wrong': ['Gemini API key সেট করা নেই — এটি test mode।'],
-        'hints': ['.env ফাইলে GEMINI_API_KEY যোগ করো।'],
+        'what_is_wrong': ['Gemini API key সেট করা নেই — test mode চলছে।'],
+        'hints': ['Render-এ GEMINI_API_KEY যোগ করো।'],
         'next_step': 'API key যোগ করো এবং আবার submit করো।',
         'status': 'In Progress',
         'raw_response': 'mock',
