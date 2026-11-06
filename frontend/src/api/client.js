@@ -56,5 +56,33 @@ export const api = {
   submitWork: (lessonId, code, explanation) =>
     request('POST', `/api/lessons/${lessonId}/submissions/`, { code, explanation }),
 
+  submitZip: async (lessonId, file, explanation) => {
+    const token = getToken();
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('explanation', explanation);
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 120000);
+
+    try {
+      const res = await fetch(`${BASE_URL}/api/lessons/${lessonId}/zip-submissions/`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData,
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      if (res.status === 401) { clearTokens(); window.location.href = '/login'; return; }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || data.detail || JSON.stringify(data));
+      return data;
+    } catch (err) {
+      clearTimeout(timeout);
+      if (err.name === 'AbortError') throw new Error('সার্ভার সাড়া দিচ্ছে না। পরে আবার চেষ্টা করো।');
+      throw err;
+    }
+  },
+
   getProgress: () => request('GET', '/api/progress/'),
 };

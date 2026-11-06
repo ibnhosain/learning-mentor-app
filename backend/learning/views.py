@@ -1,8 +1,11 @@
+import io
 import json
+import zipfile
 from datetime import date, timedelta
 from django.conf import settings
 from django.utils import timezone
 from rest_framework import status
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -13,6 +16,10 @@ from .serializers import (
     EvaluationSerializer, ProgressSummarySerializer, DailyLogSerializer,
 )
 from ai_client import evaluate_submission, generate_daily_log
+
+ALLOWED_EXTENSIONS = {'.html', '.css', '.js', '.txt', '.md', '.json', '.svg'}
+MAX_ZIP_SIZE = 5 * 1024 * 1024  # 5 MB
+MAX_FILE_CHARS = 4000  # প্রতিটি ফাইলের সর্বোচ্চ characters
 
 
 class TodayLessonView(APIView):
@@ -134,6 +141,84 @@ class ProgressView(APIView):
             'overall_percent': round(status_map['completed'] / total * 100, 1) if total else 0,
         }
         return Response(data)
+
+
+class ZipSubmissionView(APIView):
+    """ZIP ফাইল জমা দিয়ে AI মূল্যায়ন পাও।"""
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request, lesson_id):
+        try:
+            lesson = Lesson.objects.get(pk=lesson_id)
+        except Lesson.DoesNotExist:
+            return Response({'error': 'পাঠ পাওয়া যায়নি।'}, status=status.HTTP_404_NOT_FOUND)
+
+        file = request.FILES.get('file')
+        if not file:
+            return Response({'error': 'ZIP ফাইল দাও।'}, status=status.HTTP_400_BAD_REQUEST)
+        if file.size > MAX_ZIP_SIZE:
+            return Response({'error': 'ফাইল ৫ MB-এর বেশি হওয়া যাবে না।'}, status=status.HTTP_400_BAD_REQUEST)
+
+        explanation = request.data.get('explanation', '').strip()
+        if not explanation:
+            return Response({'error': 'নিজের ব্যাখ্যা লিখতে হবে।'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # ZIP থেকে code extract করো
+        try:
+            combined_code = _extract_zip(file)
+        except zipfile.BadZipFile:
+            return Response({'error': 'সঠিক ZIP ফাইল নয়।'}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'error': f'ZIP পড়া যায়নি: {e}'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not combined_code.strip():
+            return Response({'error': 'ZIP-এ কোনো HTML/CSS/JS ফাইল পাওয়া যায়নি।'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Daily limit চেক
+        today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_count = Submission.objects.filter(lesson=lesson, submitted_at__gte=today_start).count()
+        if today_count >= settings.MAX_DAILY_SUBMISSIONS:
+            return Response(
+                {'error': f'আজকে সর্বোচ্চ {settings.MAX_DAILY_SUBMISSIONS}টি submission করা যাবে।'},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
+        submission = Submission.objects.create(lesson=lesson, code=combined_code, explanation=explanation)
+        eval_data = evaluate_submission(lesson, submission)
+        if eval_data is None:
+            return Response({'error': 'AI মূল্যায়ন করতে পারেনি।'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        evaluation = Evaluation.objects.create(submission=submission, **eval_data)
+
+        progress, _ = LessonProgress.objects.get_or_create(lesson=lesson)
+        progress.attempts += 1
+        if evaluation.total_score > progress.best_score:
+            progress.best_score = evaluation.total_score
+        if evaluation.status == 'Completed' and evaluation.total_score >= 75:
+            progress.status = 'completed'
+            progress.completed_at = timezone.now()
+        else:
+            progress.status = 'needs_revision'
+        progress.save()
+
+        return Response(EvaluationSerializer(evaluation).data, status=status.HTTP_201_CREATED)
+
+
+def _extract_zip(file):
+    """ZIP থেকে text ফাইল পড়ে একটা string বানাও।"""
+    result = []
+    with zipfile.ZipFile(io.BytesIO(file.read())) as z:
+        names = [n for n in z.namelist() if not n.startswith('__MACOSX') and not n.endswith('/')]
+        names.sort()
+        for name in names:
+            ext = '.' + name.rsplit('.', 1)[-1].lower() if '.' in name else ''
+            if ext not in ALLOWED_EXTENSIONS:
+                continue
+            with z.open(name) as f:
+                content = f.read().decode('utf-8', errors='ignore')[:MAX_FILE_CHARS]
+                result.append(f"=== {name} ===\n{content}")
+    return '\n\n'.join(result)
 
 
 class DailyLogGenerateView(APIView):

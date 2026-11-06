@@ -7,34 +7,59 @@ import WakeUpLoader from '../components/WakeUpLoader'
 export default function SubmitWork() {
   const { lessonId } = useParams()
   const navigate = useNavigate()
+
+  const [tab, setTab] = useState('code') // 'code' | 'zip'
+
+  // code tab state
   const [code, setCode] = useState('')
+
+  // zip tab state
+  const [zipFile, setZipFile] = useState(null)
+
   const [explanation, setExplanation] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (!code.trim()) { setError('Code লিখতে হবে।'); return }
-    if (!explanation.trim()) { setError('নিজের ভাষায় ব্যাখ্যা লিখতে হবে।'); return }
-    setLoading(true)
     setError('')
-    try {
-      const evaluation = await api.submitWork(lessonId, code, explanation)
-      navigate('/evaluation', { state: { evaluation } })
-    } catch (err) {
-      setError(err.message || 'জমা দেওয়া যায়নি। আবার চেষ্টা করো।')
-      setLoading(false)
+
+    if (!explanation.trim()) {
+      setError('নিজের ভাষায় ব্যাখ্যা লিখতে হবে।')
+      return
+    }
+
+    if (tab === 'code') {
+      if (!code.trim()) { setError('Code লিখতে হবে।'); return }
+      setLoading(true)
+      try {
+        const evaluation = await api.submitWork(lessonId, code, explanation)
+        navigate('/evaluation', { state: { evaluation } })
+      } catch (err) {
+        setError(err.message || 'জমা দেওয়া যায়নি।')
+        setLoading(false)
+      }
+    } else {
+      if (!zipFile) { setError('ZIP ফাইল বেছে নাও।'); return }
+      setLoading(true)
+      try {
+        const evaluation = await api.submitZip(lessonId, zipFile, explanation)
+        navigate('/evaluation', { state: { evaluation } })
+      } catch (err) {
+        setError(err.message || 'জমা দেওয়া যায়নি।')
+        setLoading(false)
+      }
     }
   }
 
-  if (loading) return <WakeUpLoader message="AI মূল্যায়ন করছে" />
+  if (loading) return <WakeUpLoader message="AI মূল্যায়ন করছে, একটু অপেক্ষা করো…" />
 
   return (
     <>
       <Navbar />
       <div className="app-container" style={{ paddingTop: 20 }}>
         <p className="page-title">কাজ জমা দাও</p>
-        <p className="page-subtitle">তোমার code ও ব্যাখ্যা লেখো, AI মূল্যায়ন করবে।</p>
+        <p className="page-subtitle">তোমার code ও ব্যাখ্যা দাও, AI মূল্যায়ন করবে।</p>
 
         {/* Privacy warning */}
         <div className="alert alert-warning">
@@ -43,35 +68,82 @@ export default function SubmitWork() {
 
         {error && <div className="alert alert-danger">{error}</div>}
 
-        <form onSubmit={handleSubmit}>
-          {/* Code editor */}
-          <div className="card">
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">তোমার Code</label>
-              <textarea
-                className="form-control code-editor"
-                value={code}
-                onChange={e => setCode(e.target.value)}
-                placeholder={'<!DOCTYPE html>\n<html>\n  ...\n</html>'}
-                spellCheck={false}
-              />
-            </div>
-          </div>
+        {/* Tab switcher */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          <button
+            className={`btn ${tab === 'code' ? 'btn-primary' : 'btn-outline'}`}
+            style={{ flex: 1 }}
+            onClick={() => setTab('code')}
+            type="button"
+          >
+            ✏️ Code লিখে জমা
+          </button>
+          <button
+            className={`btn ${tab === 'zip' ? 'btn-primary' : 'btn-outline'}`}
+            style={{ flex: 1 }}
+            onClick={() => setTab('zip')}
+            type="button"
+          >
+            📁 ZIP ফাইল জমা
+          </button>
+        </div>
 
-          {/* Live HTML Preview */}
-          {code.trim() && (
+        <form onSubmit={handleSubmit}>
+
+          {/* ── CODE TAB ── */}
+          {tab === 'code' && (
+            <>
+              <div className="card">
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">তোমার Code</label>
+                  <textarea
+                    className="form-control code-editor"
+                    value={code}
+                    onChange={e => setCode(e.target.value)}
+                    placeholder={'<!DOCTYPE html>\n<html>\n  ...\n</html>'}
+                    spellCheck={false}
+                  />
+                </div>
+              </div>
+
+              {/* Live HTML Preview */}
+              {code.trim() && (
+                <div className="card">
+                  <label className="form-label">🔍 Live Preview</label>
+                  <iframe
+                    className="preview-frame"
+                    srcDoc={code}
+                    sandbox="allow-scripts"
+                    title="HTML Preview"
+                  />
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ── ZIP TAB ── */}
+          {tab === 'zip' && (
             <div className="card">
-              <label className="form-label">🔍 Live Preview</label>
-              <iframe
-                className="preview-frame"
-                srcDoc={code}
-                sandbox="allow-scripts"
-                title="HTML Preview"
+              <label className="form-label">ZIP ফাইল আপলোড করো</label>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 12 }}>
+                তোমার project folder টি ZIP করে এখানে দাও। ভেতরে .html, .css, .js ফাইল থাকলে AI পড়বে।
+                সর্বোচ্চ ৫ MB।
+              </p>
+              <input
+                type="file"
+                accept=".zip"
+                className="form-control"
+                onChange={e => setZipFile(e.target.files[0] || null)}
               />
+              {zipFile && (
+                <p style={{ marginTop: 8, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                  ✅ বেছে নেওয়া হয়েছে: {zipFile.name} ({(zipFile.size / 1024).toFixed(1)} KB)
+                </p>
+              )}
             </div>
           )}
 
-          {/* Explanation */}
+          {/* Explanation — always shown */}
           <div className="card">
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label">তোমার নিজের ব্যাখ্যা (২–৩ লাইন)</label>
@@ -97,6 +169,7 @@ export default function SubmitWork() {
           className="btn btn-outline"
           style={{ marginTop: 12 }}
           onClick={() => navigate(-1)}
+          type="button"
         >
           ← ফিরে যাও
         </button>
