@@ -1,6 +1,6 @@
 """
 সব Gemini API call এই একটি ফাইলে থাকবে।
-ধাপ ২-এ এটি পূর্ণাঙ্গ করা হবে।
+নতুন google-genai SDK ব্যবহার করা হচ্ছে।
 """
 import json
 import time
@@ -10,13 +10,13 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 try:
-    import google.generativeai as genai
-    genai.configure(api_key=settings.GEMINI_API_KEY)
-    _model = genai.GenerativeModel(settings.GEMINI_MODEL)
-    GEMINI_AVAILABLE = True
-except Exception:
+    from google import genai
+    _client = genai.Client(api_key=settings.GEMINI_API_KEY) if settings.GEMINI_API_KEY else None
+    GEMINI_AVAILABLE = bool(settings.GEMINI_API_KEY)
+except Exception as e:
+    logger.warning("Gemini SDK load ব্যর্থ: %s", e)
     GEMINI_AVAILABLE = False
-    _model = None
+    _client = None
 
 
 EVALUATION_PROMPT = """তুমি একজন Web Development Mentor। একজন Beginner শিক্ষার্থীর কাজ মূল্যায়ন করো।
@@ -55,30 +55,34 @@ EVALUATION_PROMPT = """তুমি একজন Web Development Mentor। এ�
 
 def evaluate_submission(lesson, submission, max_retries=3):
     """Submission মূল্যায়ন করো। ব্যর্থ হলে None return করো।"""
-    if not GEMINI_AVAILABLE or not settings.GEMINI_API_KEY:
-        logger.warning("Gemini API available নয়।")
+    if not GEMINI_AVAILABLE or not _client:
+        logger.warning("Gemini API available নয় — mock mode।")
         return _mock_evaluation()
 
     prompt = EVALUATION_PROMPT.format(
         lesson_title=lesson.title,
         day_number=lesson.day_number,
-        code=submission.code[:3000],  # prompt ছোট রাখো
+        code=submission.code[:3000],
         explanation=submission.explanation[:500] if submission.explanation else "(কোনো ব্যাখ্যা দেওয়া হয়নি)",
     )
 
     for attempt in range(max_retries):
         try:
-            response = _model.generate_content(prompt)
+            response = _client.models.generate_content(
+                model=settings.GEMINI_MODEL,
+                contents=prompt,
+            )
             raw = response.text.strip()
-            # Markdown code block সরাও যদি থাকে
+            # Markdown code block সরাও
             if raw.startswith("```"):
-                raw = raw.split("```")[1]
+                parts = raw.split("```")
+                raw = parts[1] if len(parts) > 1 else raw
                 if raw.startswith("json"):
                     raw = raw[4:]
-            data = json.loads(raw)
+            data = json.loads(raw.strip())
             return _normalize_eval(data, raw)
         except json.JSONDecodeError:
-            logger.error("Gemini JSON parse ব্যর্থ: %s", raw[:200])
+            logger.error("Gemini JSON parse ব্যর্থ: %s", raw[:200] if 'raw' in dir() else '?')
             return _error_evaluation("AI-র উত্তর parse করা যায়নি।")
         except Exception as e:
             err_str = str(e)
@@ -88,7 +92,7 @@ def evaluate_submission(lesson, submission, max_retries=3):
                 time.sleep(wait)
             else:
                 logger.error("Gemini error: %s", err_str)
-                return _error_evaluation(f"AI error: {err_str[:100]}")
+                return _error_evaluation(f"AI error: {err_str[:120]}")
 
     return _error_evaluation("Rate limit — পরে আবার চেষ্টা করো।")
 
@@ -104,7 +108,7 @@ def generate_daily_log(submissions):
         for s in submissions
     )
 
-    if not GEMINI_AVAILABLE or not settings.GEMINI_API_KEY:
+    if not GEMINI_AVAILABLE or not _client:
         from datetime import date
         return f"# Daily Log — {date.today()}\n\n## আজকের কাজ\n{summary}\n"
 
@@ -115,7 +119,10 @@ def generate_daily_log(submissions):
 Report-এ থাকবে: আজকের বিষয়, কী শিখেছি, দুর্বলতা, পরের পাঠ।"""
 
     try:
-        response = _model.generate_content(prompt)
+        response = _client.models.generate_content(
+            model=settings.GEMINI_MODEL,
+            contents=prompt,
+        )
         return response.text
     except Exception as e:
         logger.error("Daily log generate ব্যর্থ: %s", e)
