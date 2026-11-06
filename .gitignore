@@ -37,3 +37,9 @@ frontend/build/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Sensitive files
+*.text
+*.txt
+secret*
+key*
