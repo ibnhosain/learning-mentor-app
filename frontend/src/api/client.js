@@ -56,17 +56,17 @@ export const api = {
   submitWork: (lessonId, code, explanation) =>
     request('POST', `/api/lessons/${lessonId}/submissions/`, { code, explanation }),
 
-  submitZip: async (lessonId, file, explanation) => {
+  submitFile: async (lessonId, file, explanation) => {
     const token = getToken();
     const formData = new FormData();
     formData.append('file', file);
     formData.append('explanation', explanation);
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 120000);
+    const timeout = setTimeout(() => controller.abort(), 180000); // 3 min for large files
 
     try {
-      const res = await fetch(`${BASE_URL}/api/lessons/${lessonId}/zip-submissions/`, {
+      const res = await fetch(`${BASE_URL}/api/lessons/${lessonId}/file-submissions/`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData,

@@ -2,7 +2,9 @@
 সব Gemini API call এই একটি ফাইলে থাকবে।
 নতুন google-genai SDK ব্যবহার করা হচ্ছে।
 """
+import io
 import json
+import mimetypes
 import time
 import logging
 from django.conf import settings
@@ -156,6 +158,76 @@ def _error_evaluation(message):
         'status': 'In Progress',
         'raw_response': message,
     }
+
+
+def evaluate_any_file(lesson, file_bytes, filename, explanation, max_retries=3):
+    """যেকোনো ফাইল Gemini File API দিয়ে মূল্যায়ন করো।"""
+    if not GEMINI_AVAILABLE or not _client:
+        return _mock_evaluation()
+
+    mime_type = mimetypes.guess_type(filename)[0] or 'application/octet-stream'
+
+    prompt = f"""তুমি একজন Web Development Mentor। একজন Beginner শিক্ষার্থীর জমা দেওয়া ফাইল মূল্যায়ন করো।
+
+**পাঠ:** {lesson.title} (Day {lesson.day_number})
+**ফাইল:** {filename}
+
+**শিক্ষার্থীর ব্যাখ্যা:**
+{explanation or '(কোনো ব্যাখ্যা দেওয়া হয়নি)'}
+
+**মূল্যায়নের নিয়ম:**
+- প্রথমবারে সরাসরি solution দেবে না — hint ও প্রশ্ন দেবে।
+- ব্যাখ্যা না থাকলে explanation score শূন্য।
+- ৭৫% বা বেশি এবং practical task সম্পন্ন হলে "Completed"।
+
+**Rubric:** concept: ০–২০, independent_coding: ০–৩০, debugging: ০–২০, project_quality: ০–২০, explanation: ০–১০
+
+নিচের JSON format-এ উত্তর দাও (অন্য কোনো text নয়):
+{{"scores": {{"concept": 0, "independent_coding": 0, "debugging": 0, "project_quality": 0, "explanation": 0}}, "total": 0, "what_is_correct": ["..."], "what_is_wrong": ["..."], "hints": ["..."], "next_step": "...", "status": "In Progress | Needs Revision | Completed"}}"""
+
+    for attempt in range(max_retries):
+        uploaded = None
+        try:
+            # Gemini File API-তে upload করো
+            uploaded = _client.files.upload(
+                file=io.BytesIO(file_bytes),
+                config={'mime_type': mime_type, 'display_name': filename},
+            )
+            response = _client.models.generate_content(
+                model=settings.GEMINI_MODEL,
+                contents=[uploaded, prompt],
+            )
+            # Uploaded file মুছে দাও (storage বাঁচাতে)
+            try:
+                _client.files.delete(name=uploaded.name)
+            except Exception:
+                pass
+
+            raw = response.text.strip()
+            if raw.startswith("```"):
+                parts = raw.split("```")
+                raw = parts[1] if len(parts) > 1 else raw
+                if raw.startswith("json"):
+                    raw = raw[4:]
+            data = json.loads(raw.strip())
+            return _normalize_eval(data, raw)
+
+        except json.JSONDecodeError:
+            return _error_evaluation("AI-র উত্তর parse করা যায়নি।")
+        except Exception as e:
+            err_str = str(e)
+            if uploaded:
+                try:
+                    _client.files.delete(name=uploaded.name)
+                except Exception:
+                    pass
+            if '429' in err_str or 'quota' in err_str.lower():
+                time.sleep(2 ** attempt)
+            else:
+                logger.error("File eval error: %s", err_str)
+                return _error_evaluation(f"AI error: {err_str[:120]}")
+
+    return _error_evaluation("Rate limit — পরে আবার চেষ্টা করো।")
 
 
 def _mock_evaluation():

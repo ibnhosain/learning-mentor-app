@@ -15,11 +15,19 @@ from .serializers import (
     SubmissionSerializer, SubmissionCreateSerializer,
     EvaluationSerializer, ProgressSummarySerializer, DailyLogSerializer,
 )
-from ai_client import evaluate_submission, generate_daily_log
+from ai_client import evaluate_submission, evaluate_any_file, generate_daily_log
 
-ALLOWED_EXTENSIONS = {'.html', '.css', '.js', '.txt', '.md', '.json', '.svg'}
-MAX_ZIP_SIZE = 5 * 1024 * 1024  # 5 MB
-MAX_FILE_CHARS = 4000  # প্রতিটি ফাইলের সর্বোচ্চ characters
+MAX_FILE_SIZE = 10 * 1024 * 1024   # 10 MB
+MAX_FILE_CHARS = 4000               # text হলে prompt-এ এতটুকুই পাঠাবো
+MAX_ZIP_SIZE = 10 * 1024 * 1024
+
+# এই extension-গুলো সরাসরি text হিসেবে পড়া যাবে
+TEXT_EXTENSIONS = {
+    '.html', '.htm', '.css', '.js', '.ts', '.jsx', '.tsx',
+    '.py', '.txt', '.md', '.json', '.xml', '.svg', '.yaml',
+    '.yml', '.java', '.c', '.cpp', '.cs', '.php', '.rb',
+    '.go', '.rs', '.sh', '.sql', '.r', '.swift', '.kt',
+}
 
 
 class TodayLessonView(APIView):
@@ -143,8 +151,8 @@ class ProgressView(APIView):
         return Response(data)
 
 
-class ZipSubmissionView(APIView):
-    """ZIP ফাইল জমা দিয়ে AI মূল্যায়ন পাও।"""
+class AnyFileSubmissionView(APIView):
+    """যেকোনো ফাইল জমা দিয়ে AI মূল্যায়ন পাও।"""
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
@@ -156,24 +164,13 @@ class ZipSubmissionView(APIView):
 
         file = request.FILES.get('file')
         if not file:
-            return Response({'error': 'ZIP ফাইল দাও।'}, status=status.HTTP_400_BAD_REQUEST)
-        if file.size > MAX_ZIP_SIZE:
-            return Response({'error': 'ফাইল ৫ MB-এর বেশি হওয়া যাবে না।'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'ফাইল দাও।'}, status=status.HTTP_400_BAD_REQUEST)
+        if file.size > MAX_FILE_SIZE:
+            return Response({'error': 'ফাইল ১০ MB-এর বেশি হওয়া যাবে না।'}, status=status.HTTP_400_BAD_REQUEST)
 
         explanation = request.data.get('explanation', '').strip()
         if not explanation:
             return Response({'error': 'নিজের ব্যাখ্যা লিখতে হবে।'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # ZIP থেকে code extract করো
-        try:
-            combined_code = _extract_zip(file)
-        except zipfile.BadZipFile:
-            return Response({'error': 'সঠিক ZIP ফাইল নয়।'}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            return Response({'error': f'ZIP পড়া যায়নি: {e}'}, status=status.HTTP_400_BAD_REQUEST)
-
-        if not combined_code.strip():
-            return Response({'error': 'ZIP-এ কোনো HTML/CSS/JS ফাইল পাওয়া যায়নি।'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Daily limit চেক
         today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -184,8 +181,34 @@ class ZipSubmissionView(APIView):
                 status=status.HTTP_429_TOO_MANY_REQUESTS,
             )
 
-        submission = Submission.objects.create(lesson=lesson, code=combined_code, explanation=explanation)
-        eval_data = evaluate_submission(lesson, submission)
+        filename = file.name
+        ext = ('.' + filename.rsplit('.', 1)[-1].lower()) if '.' in filename else ''
+        file_bytes = file.read()
+
+        # ZIP হলে extract করে text হিসেবে পাঠাও
+        if ext == '.zip':
+            try:
+                combined_code = _extract_zip_bytes(file_bytes)
+            except Exception as e:
+                return Response({'error': f'ZIP পড়া যায়নি: {e}'}, status=status.HTTP_400_BAD_REQUEST)
+            submission = Submission.objects.create(lesson=lesson, code=combined_code[:8000], explanation=explanation)
+            eval_data = evaluate_submission(lesson, submission)
+
+        # Text file হলে সরাসরি prompt-এ পাঠাও
+        elif ext in TEXT_EXTENSIONS:
+            code = file_bytes.decode('utf-8', errors='ignore')[:MAX_FILE_CHARS * 2]
+            submission = Submission.objects.create(lesson=lesson, code=code, explanation=explanation)
+            eval_data = evaluate_submission(lesson, submission)
+
+        # Binary file (image, PDF, audio, video) — Gemini File API
+        else:
+            submission = Submission.objects.create(
+                lesson=lesson,
+                code=f'[Binary file: {filename}]',
+                explanation=explanation,
+            )
+            eval_data = evaluate_any_file(lesson, file_bytes, filename, explanation)
+
         if eval_data is None:
             return Response({'error': 'AI মূল্যায়ন করতে পারেনি।'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
@@ -205,15 +228,15 @@ class ZipSubmissionView(APIView):
         return Response(EvaluationSerializer(evaluation).data, status=status.HTTP_201_CREATED)
 
 
-def _extract_zip(file):
+def _extract_zip_bytes(file_bytes):
     """ZIP থেকে text ফাইল পড়ে একটা string বানাও।"""
     result = []
-    with zipfile.ZipFile(io.BytesIO(file.read())) as z:
+    with zipfile.ZipFile(io.BytesIO(file_bytes)) as z:
         names = [n for n in z.namelist() if not n.startswith('__MACOSX') and not n.endswith('/')]
         names.sort()
         for name in names:
-            ext = '.' + name.rsplit('.', 1)[-1].lower() if '.' in name else ''
-            if ext not in ALLOWED_EXTENSIONS:
+            ext = ('.' + name.rsplit('.', 1)[-1].lower()) if '.' in name else ''
+            if ext not in TEXT_EXTENSIONS:
                 continue
             with z.open(name) as f:
                 content = f.read().decode('utf-8', errors='ignore')[:MAX_FILE_CHARS]

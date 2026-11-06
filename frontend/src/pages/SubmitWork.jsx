@@ -41,10 +41,10 @@ export default function SubmitWork() {
         setLoading(false)
       }
     } else {
-      if (!zipFile) { setError('ZIP ফাইল বেছে নাও।'); return }
+      if (!zipFile) { setError('ফাইল বেছে নাও।'); return }
       setLoading(true)
       try {
-        const evaluation = await api.submitZip(lessonId, zipFile, explanation)
+        const evaluation = await api.submitFile(lessonId, zipFile, explanation)
         navigate('/evaluation', { state: { evaluation } })
       } catch (err) {
         setError(err.message || 'জমা দেওয়া যায়নি।')
@@ -86,7 +86,7 @@ export default function SubmitWork() {
             onClick={() => setTab('zip')}
             type="button"
           >
-            📁 ZIP ফাইল জমা
+            📁 ফাইল জমা
           </button>
         </div>
 
@@ -125,14 +125,14 @@ export default function SubmitWork() {
           {/* ── ZIP TAB ── */}
           {tab === 'zip' && (
             <div className="card">
-              <label className="form-label">ZIP ফাইল আপলোড করো</label>
+              <label className="form-label">যেকোনো ফাইল আপলোড করো</label>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 12 }}>
-                তোমার project folder টি ZIP করে এখানে দাও। ভেতরে .html, .css, .js ফাইল থাকলে AI পড়বে।
-                সর্বোচ্চ ৫ MB।
+                HTML, CSS, JS, Python, ZIP, PDF, ছবি (JPG/PNG), Word — যেকোনো ফাইল দাও।
+                AI সব ধরনের ফাইল পড়ে মূল্যায়ন করবে। সর্বোচ্চ ১০ MB।
               </p>
               <input
                 type="file"
-                accept=".zip"
+                accept="*/*"
                 className="form-control"
                 onChange={e => setZipFile(e.target.files[0] || null)}
               />
