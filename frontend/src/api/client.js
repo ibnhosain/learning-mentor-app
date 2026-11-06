@@ -37,7 +37,12 @@ const request = async (method, path, body = null) => {
       return;
     }
 
-    const data = await res.json();
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); } catch {
+      if (!res.ok) throw new Error(`সার্ভার error (${res.status}) — একটু পরে আবার চেষ্টা করো।`);
+      throw new Error('সার্ভার থেকে ভুল উত্তর এসেছে।');
+    }
     if (!res.ok) throw new Error(data.error || data.detail || JSON.stringify(data));
     return data;
   } catch (err) {
@@ -74,7 +79,12 @@ export const api = {
       });
       clearTimeout(timeout);
       if (res.status === 401) { clearTokens(); window.location.href = '/login'; return; }
-      const data = await res.json();
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch {
+        if (!res.ok) throw new Error(`সার্ভার error (${res.status}) — একটু পরে আবার চেষ্টা করো।`);
+        throw new Error('সার্ভার থেকে ভুল উত্তর এসেছে।');
+      }
       if (!res.ok) throw new Error(data.error || data.detail || JSON.stringify(data));
       return data;
     } catch (err) {
