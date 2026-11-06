@@ -21,12 +21,15 @@ def _api_key():
 
 
 # Google-এর recommended model order — নতুন থেকে পুরনো
+# Google-এর বর্তমান model order — gemini-3.8-flash সবার আগে (Google নিজেই recommend করেছে)
 FALLBACK_MODELS = [
     'gemini-3.8-flash',
     'gemini-2.5-flash',
-    'gemini-2.0-flash',
     'gemini-1.5-flash',
 ]
+
+# এই model-গুলো deprecated — সরাসরি skip করো
+DEPRECATED_MODELS = {'gemini-2.0-flash', 'gemini-1.5-flash-002'}
 
 _MODEL_ERROR_PATTERNS = (
     'no longer available', 'deprecated', 'not found',
@@ -34,18 +37,15 @@ _MODEL_ERROR_PATTERNS = (
 )
 
 
-def _model():
-    configured = settings.GEMINI_MODEL or ''
-    # configured model যদি fallback list-এ না থাকে তাহলে list-এর শুরুতে যোগ করো
-    if configured and configured not in FALLBACK_MODELS:
-        return configured
-    return FALLBACK_MODELS[0]
-
-
-def _generate(contents, max_retries=3):
+def _generate(contents, max_retries=2):
     """Gemini REST API call — model unavailable হলে fallback করে।"""
     configured = settings.GEMINI_MODEL or FALLBACK_MODELS[0]
-    models_to_try = [configured] + [m for m in FALLBACK_MODELS if m != configured]
+
+    # deprecated model হলে শুরুতে skip করো
+    if configured in DEPRECATED_MODELS:
+        models_to_try = list(FALLBACK_MODELS)
+    else:
+        models_to_try = [configured] + [m for m in FALLBACK_MODELS if m != configured]
 
     last_error = ''
     for model in models_to_try:
@@ -54,12 +54,12 @@ def _generate(contents, max_retries=3):
 
         for attempt in range(max_retries):
             try:
-                resp = _requests.post(url, json=payload, timeout=60)
+                resp = _requests.post(url, json=payload, timeout=25)
                 if resp.status_code == 429:
-                    time.sleep(2 ** attempt)
+                    time.sleep(min(4, 2 ** attempt))
                     continue
                 if resp.status_code in (404, 400):
-                    last_error = f"{model} not available"
+                    last_error = f"{model}: {resp.status_code}"
                     break  # পরের model চেষ্টা করো
                 if not resp.ok:
                     try:
@@ -68,19 +68,22 @@ def _generate(contents, max_retries=3):
                         err = {}
                     msg = err.get('error', {}).get('message', resp.text[:300])
                     if any(p in msg.lower() for p in _MODEL_ERROR_PATTERNS):
-                        last_error = msg
+                        last_error = model
                         break  # পরের model চেষ্টা করো
                     return None, f"AI error: {msg}"
                 data = resp.json()
                 text = data['candidates'][0]['content']['parts'][0]['text']
-                logger.info("Gemini responded with model: %s", model)
+                logger.info("Gemini OK: %s", model)
                 return text, None
+            except _requests.Timeout:
+                last_error = f"{model} timeout"
+                break  # timeout হলে পরের model চেষ্টা করো
             except Exception as e:
-                logger.error("Gemini REST error (%s): %s", model, e)
+                logger.error("Gemini error (%s): %s", model, e)
                 last_error = str(e)
                 break
 
-    return None, f"কোনো Gemini model কাজ করেনি। শেষ error: {last_error}"
+    return None, f"AI কাজ করেনি ({last_error}). একটু পরে আবার চেষ্টা করো।"
 
 
 EVALUATION_PROMPT = """তুমি একজন Web Development Mentor। একজন Beginner শিক্ষার্থীর কাজ মূল্যায়ন করো।
