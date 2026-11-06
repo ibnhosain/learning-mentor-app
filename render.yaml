@@ -16,7 +16,7 @@ services:
       - key: MAX_DAILY_SUBMISSIONS
         value: "10"
       - key: GEMINI_MODEL
-        value: "gemini-1.5-flash"
+        value: "gemini-2.0-flash"
       # নিচের দুটো Render dashboard-এ নিজে দিতে হবে (secret)
       # DATABASE_URL
       # SECRET_KEY
